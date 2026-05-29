@@ -1,0 +1,26 @@
+# Environment variables — NEVER commit this. It contains your encryption key and API keys.
+.env
+
+# SQLite database files — the live data lives on the VPS, not in git.
+*.db
+*.db-wal
+*.db-shm
+data/
+
+# Node.js dependencies — installed fresh with `npm install`, not stored in git.
+node_modules/
+
+# macOS clutter
+.DS_Store
+
+# Editor folders
+.vscode/
+.idea/
+
+# PM2 logs and runtime files
+logs/
+*.log
+.pm2/
+
+# APNs private key file — treat like a password.
+*.p8

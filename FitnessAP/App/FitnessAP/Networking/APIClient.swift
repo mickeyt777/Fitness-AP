@@ -1,0 +1,197 @@
+// APIClient.swift
+// All communication with the Fitness AP backend lives here.
+// Every other file in the app calls these methods — nothing else touches URLSession.
+//
+// Dev mode: set devUserId and the X-User-Id header is sent instead of an Apple JWT.
+// Production: swap requireUser middleware to read Authorization: Bearer <apple_token>.
+
+import Foundation
+
+// MARK: - Base URL
+// Change this to your VPS address when going live: "https://api.fitnessap.com"
+private let kBaseURL = "http://localhost:3000"
+
+// MARK: - Errors
+
+enum APIError: Error, LocalizedError {
+    case badURL
+    case networkError(Error)
+    case httpError(statusCode: Int, body: String)
+    case decodingError(Error)
+
+    var errorDescription: String? {
+        switch self {
+        case .badURL:
+            return "Invalid URL — check kBaseURL in APIClient.swift"
+        case .networkError(let e):
+            return "Network error: \(e.localizedDescription)"
+        case .httpError(let code, let body):
+            return "HTTP \(code): \(body)"
+        case .decodingError(let e):
+            return "Decode error: \(e.localizedDescription)"
+        }
+    }
+}
+
+// MARK: - APIClient
+
+final class APIClient {
+    static let shared = APIClient()
+
+    /// Set this to your test user's UUID to use the dev X-User-Id header.
+    /// AppState.signIn() sets this automatically.
+    var devUserId: String?
+
+    private let session: URLSession
+    private let decoder = JSONDecoder()
+
+    private init() {
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        self.session = URLSession(configuration: config)
+    }
+
+    // MARK: - Internal helpers
+
+    private func buildRequest(
+        method: String,
+        path: String,
+        body: (any Encodable)? = nil,
+        asUserId: String? = nil
+    ) throws -> URLRequest {
+        guard let url = URL(string: kBaseURL + path) else {
+            throw APIError.badURL
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = method
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        // Auth header — dev mode only. Production replaces with:
+        //   req.setValue("Bearer \(appleToken)", forHTTPHeaderField: "Authorization")
+        if let uid = asUserId ?? devUserId {
+            req.setValue(uid, forHTTPHeaderField: "X-User-Id")
+        }
+
+        if let body {
+            req.httpBody = try JSONEncoder().encode(body)
+        }
+        return req
+    }
+
+    /// Performs a request and decodes the response body as T.
+    private func perform<T: Decodable>(_ req: URLRequest) async throws -> T {
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.networkError(URLError(.badServerResponse))
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "(empty)"
+            throw APIError.httpError(statusCode: http.statusCode, body: body)
+        }
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw APIError.decodingError(error)
+        }
+    }
+
+    /// Like perform, but returns nil when the server sends JSON `null`.
+    /// Used by endpoints like GET /checkins/:userId/today that legitimately return null.
+    private func performOptional<T: Decodable>(_ req: URLRequest) async throws -> T? {
+        let (data, response) = try await session.data(for: req)
+        guard let http = response as? HTTPURLResponse else {
+            throw APIError.networkError(URLError(.badServerResponse))
+        }
+        guard (200...299).contains(http.statusCode) else {
+            let body = String(data: data, encoding: .utf8) ?? "(empty)"
+            throw APIError.httpError(statusCode: http.statusCode, body: body)
+        }
+        if data == Data("null".utf8) { return nil }
+        do {
+            return try decoder.decode(T.self, from: data)
+        } catch {
+            throw APIError.decodingError(error)
+        }
+    }
+
+    // MARK: - Health
+
+    func health() async throws -> HealthResponse {
+        let req = try buildRequest(method: "GET", path: "/health")
+        return try await perform(req)
+    }
+
+    // MARK: - Users
+
+    func createUser(id: String, displayName: String) async throws -> UserModel {
+        struct Body: Encodable { let id: String; let display_name: String }
+        let req = try buildRequest(method: "POST", path: "/users", body: Body(id: id, display_name: displayName))
+        return try await perform(req)
+    }
+
+    // MARK: - Profiles
+
+    func getProfile(userId: String) async throws -> Profile {
+        let req = try buildRequest(method: "GET", path: "/profiles/\(userId)", asUserId: userId)
+        return try await perform(req)
+    }
+
+    func upsertProfile(userId: String, body: UpsertProfileBody) async throws -> Profile {
+        let req = try buildRequest(method: "PUT", path: "/profiles/\(userId)", body: body, asUserId: userId)
+        return try await perform(req)
+    }
+
+    // MARK: - Workouts
+
+    /// Returns this week's personalised workout plan as an array of sessions.
+    func getWorkoutPlan(userId: String) async throws -> WorkoutPlan {
+        let req = try buildRequest(method: "GET", path: "/workouts/\(userId)/plan", asUserId: userId)
+        return try await perform(req)
+    }
+
+    // MARK: - Macros
+
+    func getMacros(userId: String) async throws -> MacroResult {
+        let req = try buildRequest(method: "GET", path: "/macros/\(userId)", asUserId: userId)
+        return try await perform(req)
+    }
+
+    func getFoodLeaderboard(userId: String) async throws -> [FoodItem] {
+        let req = try buildRequest(method: "GET", path: "/macros/\(userId)/leaderboard", asUserId: userId)
+        return try await perform(req)
+    }
+
+    // MARK: - Check-ins
+
+    /// Returns today's check-in, or nil if the user hasn't checked in yet.
+    func getTodayCheckin(userId: String) async throws -> CheckIn? {
+        let req = try buildRequest(method: "GET", path: "/checkins/\(userId)/today", asUserId: userId)
+        return try await performOptional(req)
+    }
+
+    func submitCheckin(userId: String, body: SubmitCheckinBody) async throws -> CheckInResponse {
+        let req = try buildRequest(method: "POST", path: "/checkins", body: body, asUserId: userId)
+        return try await perform(req)
+    }
+
+    // MARK: - Chat
+
+    func getChatHistory(userId: String) async throws -> [ChatMessage] {
+        let req = try buildRequest(method: "GET", path: "/chat/\(userId)", asUserId: userId)
+        return try await perform(req)
+    }
+
+    func sendChat(userId: String, body: SendChatBody) async throws -> ChatResponse {
+        let req = try buildRequest(method: "POST", path: "/chat", body: body, asUserId: userId)
+        return try await perform(req)
+    }
+
+    // MARK: - AI parse
+
+    func aiParse(userId: String, rawText: String) async throws -> AiParseResponse {
+        struct Body: Encodable { let raw_text: String }
+        let req = try buildRequest(method: "POST", path: "/ai/chat-parse",
+                                   body: Body(raw_text: rawText), asUserId: userId)
+        return try await perform(req)
+    }
+}
