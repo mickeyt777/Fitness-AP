@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fitness GLP — Design Kickoff v1</title>
+<style>
+  :root{
+    /* ---- Fitness GLP palette (dark-first) ---- */
+    --glp-green:#34D399;      /* primary — supportive growth / muscle retention */
+    --glp-green-deep:#0E9F75; /* pressed / strokes */
+    --glp-mint:#8FF0CE;        /* light tint, rings */
+    --amber:#FBBF6B;           /* energy / activity accent */
+    --coral:#FF8B6B;           /* gentle alert / cardio */
+    --violet:#A78BFA;          /* data / measurements */
+
+    /* dark surfaces */
+    --bg:#0B1012;
+    --bg-2:#10171A;
+    --card:#161F23;
+    --card-2:#1C272C;
+    --stroke:#26343A;
+    --txt:#E9F0F1;
+    --txt-2:#9DB0B4;
+    --txt-3:#6E8085;
+
+    --r-lg:28px; --r-md:20px; --r-sm:14px;
+    --ff:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Inter,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;background:radial-gradient(1200px 700px at 20% -5%,#13211f 0%,#0B1012 55%);
+    color:var(--txt);font-family:var(--ff);-webkit-font-smoothing:antialiased;
+    padding:40px 28px 80px;
+  }
+  .wrap{max-width:1500px;margin:0 auto}
+  .doc-h1{font-size:30px;font-weight:800;letter-spacing:-.02em;margin:0 0 4px}
+  .doc-sub{color:var(--txt-2);font-size:15px;margin:0 0 32px;max-width:760px;line-height:1.5}
+  .badge{display:inline-block;font-size:11px;font-weight:700;color:var(--glp-mint);
+    border:1px solid var(--stroke);border-radius:999px;padding:4px 10px;margin-bottom:18px;
+    background:rgba(52,211,153,.08)}
+
+  .section-h{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--txt-3);margin:46px 0 18px}
+
+  /* ---------- identity panel ---------- */
+  .identity{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:18px}
+  .panel{background:var(--card);border:1px solid var(--stroke);border-radius:var(--r-md);padding:20px}
+  .panel h3{margin:0 0 14px;font-size:14px;font-weight:700;color:var(--txt)}
+  .swatches{display:flex;flex-wrap:wrap;gap:10px}
+  .sw{flex:1 1 120px;border-radius:14px;padding:12px;min-height:74px;display:flex;flex-direction:column;justify-content:flex-end;
+    border:1px solid rgba(255,255,255,.06)}
+  .sw b{font-size:12px;font-weight:700}
+  .sw span{font-size:10.5px;opacity:.7;font-family:ui-monospace,Menlo,monospace}
+  .type-row{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--stroke);padding:9px 0}
+  .type-row:last-child{border-bottom:0}
+  .type-row .lbl{color:var(--txt-3);font-size:11px;font-family:ui-monospace,Menlo,monospace}
+  .icons{display:flex;gap:16px;flex-wrap:wrap;align-items:center}
+  .iconchip{width:54px;height:54px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+    background:var(--card-2);border:1px solid var(--stroke)}
+  .appicon{width:96px;height:96px;border-radius:22px;box-shadow:0 12px 30px rgba(16,159,117,.35)}
+  .note{color:var(--txt-2);font-size:12.5px;line-height:1.5;margin-top:12px}
+
+  /* ---------- phones ---------- */
+  .phones{display:flex;gap:30px;flex-wrap:wrap}
+  .phone{width:330px;flex:0 0 auto}
+  .phone-cap{font-size:13px;font-weight:700;color:var(--txt);margin:0 0 4px}
+  .phone-desc{font-size:11.5px;color:var(--txt-3);margin:0 0 12px;line-height:1.45;min-height:30px}
+  .screen{position:relative;width:330px;height:700px;background:var(--bg-2);border-radius:42px;
+    border:1px solid #20292e;box-shadow:0 26px 60px rgba(0,0,0,.55),inset 0 0 0 6px #05090a;
+    overflow:hidden}
+  .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:118px;height:30px;background:#05090a;border-radius:18px;z-index:30}
+  .statusbar{position:absolute;top:0;left:0;right:0;height:48px;display:flex;align-items:center;justify-content:space-between;
+    padding:16px 26px 0;font-size:12px;font-weight:600;color:var(--txt);z-index:20}
+  .scr-body{position:absolute;top:48px;left:0;right:0;bottom:0;overflow:hidden;padding:6px 16px 0}
+  .lt{font-size:26px;font-weight:800;letter-spacing:-.02em;margin:6px 2px 2px}
+  .lt-sub{font-size:12px;color:var(--txt-3);margin:0 2px 14px}
+  .c{background:var(--card);border:1px solid var(--stroke);border-radius:var(--r-md);padding:14px;margin-bottom:12px}
+  .c-row{display:flex;align-items:center;justify-content:space-between}
+  .c-title{font-size:13px;font-weight:700}
+  .c-meta{font-size:11px;color:var(--txt-3)}
+  .pill{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px}
+  .pill-green{background:rgba(52,211,153,.14);color:var(--glp-mint)}
+  .pill-amber{background:rgba(251,191,107,.14);color:var(--amber)}
+  .pill-rest{background:rgba(167,139,250,.16);color:#cdbcff}
+
+  .tabbar{position:absolute;bottom:0;left:0;right:0;height:74px;background:rgba(11,16,18,.82);
+    backdrop-filter:blur(18px);border-top:1px solid var(--stroke);display:flex;justify-content:space-around;
+    align-items:flex-start;padding-top:10px;z-index:20}
+  .tab{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:9.5px;color:var(--txt-3);font-weight:600}
+  .tab.active{color:var(--glp-green)}
+  .tab svg{width:22px;height:22px}
+
+  .macro-bar{height:7px;border-radius:6px;background:var(--card-2);overflow:hidden;margin-top:8px}
+  .macro-bar i{display:block;height:100%;border-radius:6px}
+  .macro-grid{display:flex;gap:14px;margin-top:6px}
+  .macro-grid > div{flex:1}
+  .macro-grid b{font-size:13px;font-weight:800}
+  .macro-grid span{font-size:10px;color:var(--txt-3)}
+
+  .move{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--stroke)}
+  .move:last-child{border-bottom:0}
+  .move .mi{width:34px;height:34px;border-radius:10px;background:var(--card-2);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .move .mt{flex:1}
+  .move .mt b{font-size:13px;font-weight:700;display:block}
+  .move .mt span{font-size:10.5px;color:var(--txt-3)}
+  .check{width:22px;height:22px;border-radius:7px;border:1.5px solid var(--stroke);flex-shrink:0}
+  .check.done{background:var(--glp-green);border-color:var(--glp-green)}
+
+  .seg{display:flex;gap:6px;margin:4px 2px 14px}
+  .seg div{font-size:11px;font-weight:600;color:var(--txt-3);padding:6px 12px;border-radius:999px;background:var(--card)}
+  .seg div.on{background:rgba(52,211,153,.15);color:var(--glp-mint)}
+
+  .btn{display:block;width:100%;text-align:center;background:var(--glp-green);color:#05231a;font-weight:800;
+    font-size:15px;padding:15px;border-radius:16px;border:0;margin-top:6px}
+  .btn-ghost{background:transparent;color:var(--txt-2);font-weight:600;font-size:12px;border:0;width:100%;padding:12px;margin-top:6px}
+
+  .feat{display:flex;align-items:flex-start;gap:11px;margin:13px 2px}
+  .feat .fi{width:26px;height:26px;border-radius:8px;background:rgba(52,211,153,.13);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .feat b{font-size:13px;font-weight:700;display:block}
+  .feat span{font-size:11px;color:var(--txt-3);line-height:1.4}
+
+  .small{font-size:10px;color:var(--txt-3);text-align:center;line-height:1.5}
+  a.link{color:var(--glp-mint);text-decoration:none}
+  .legend{display:flex;gap:14px;margin-top:8px}
+  .legend div{font-size:10px;color:var(--txt-3);display:flex;align-items:center;gap:5px}
+  .dot{width:8px;height:8px;border-radius:99px;display:inline-block}
+
+  /* ---------- light theme ---------- */
+  .light{
+    --glp-green:#0E9F75;--glp-mint:#0B7A59;--amber:#D98A1E;--coral:#D45A3A;--violet:#7C5CD6;
+    --bg:#EEF2F0;--bg-2:#F4F7F5;--card:#FFFFFF;--card-2:#F1F5F3;--stroke:#E3E9E6;
+    --txt:#0E1417;--txt-2:#5A6B6E;--txt-3:#7A8B8E;
+    color:var(--txt);
+  }
+  .light .lt{color:var(--txt)}
+  .light .c-title{color:var(--txt)}
+  .light .screen{box-shadow:0 26px 60px rgba(0,0,0,.22),inset 0 0 0 6px #dfe6e3}
+  .light .statusbar{color:#0E1417}
+  .light .pill-green{background:rgba(14,159,117,.12);color:#0B7A59}
+  .light .pill-amber{background:rgba(217,138,30,.15);color:#B6760F}
+  .light .pill-rest{background:rgba(124,92,214,.14);color:#5B3FA8}
+  .light .tabbar{background:rgba(255,255,255,.85)}
+  .light .tab{color:#9DB0B4}
+  .light .tab.active{color:#0E9F75}
+  .light .btn{background:#0E9F75;color:#fff}
+  .light .check.done{background:#0E9F75;border-color:#0E9F75}
+  .light .check{border-color:#CBD5D1}
+  .light .ring-track{stroke:#E8EDEB}
+  .light .ring-num{fill:#0E1417}
+  .light .ring-lbl{fill:#7A8B8E}
+  .light .ring-green{stroke:#0E9F75}
+  .light .fill-green{fill:#0E9F75}
+  .light .stroke-green{stroke:#0E9F75}
+  .light .stroke-mint{stroke:#0E9F75}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="badge">FITNESS GLP · DESIGN KICKOFF · v1 (dark-first, light pass)</span>
+  <h1 class="doc-h1">Fitness GLP — Reference Mockups</h1>
+  <p class="doc-sub">First-pass visual direction plus the four key screens (Today, Progress, Paywall, Onboarding). Built as static previews to react to — not production SwiftUI. Includes the new steps/cardio surface, a rest-day state, the activity sparklines, the trial framing, and the Watch + HealthKit onboarding steps. Light-mode variants come after we settle direction.</p>
+
+  <!-- ================= IDENTITY ================= -->
+  <div class="section-h">Visual identity — proposal</div>
+  <div class="identity">
+    <div class="panel">
+      <h3>Palette</h3>
+      <div class="swatches">
+        <div class="sw" style="background:linear-gradient(160deg,#34D399,#0E9F75);color:#05231a"><b>GLP Green</b><span>#34D399</span></div>
+        <div class="sw" style="background:#8FF0CE;color:#05231a"><b>Mint tint</b><span>#8FF0CE</span></div>
+        <div class="sw" style="background:#FBBF6B;color:#3a2600"><b>Energy</b><span>#FBBF6B</span></div>
+        <div class="sw" style="background:#FF8B6B;color:#3a1100"><b>Cardio</b><span>#FF8B6B</span></div>
+        <div class="sw" style="background:#A78BFA;color:#1c0a3a"><b>Data</b><span>#A78BFA</span></div>
+        <div class="sw" style="background:#161F23;color:#E9F0F1"><b>Card</b><span>#161F23</span></div>
+        <div class="sw" style="background:#0B1012;color:#E9F0F1"><b>Base</b><span>#0B1012</span></div>
+      </div>
+      <p class="note">Green carries the muscle-retention / growth idea without going neon. Amber + coral are reserved strictly for activity and cardio so motion reads instantly. Violet tags measurement data. Supportive, clinical-adjacent — never hospital-sterile.</p>
+    </div>
+
+    <div class="panel">
+      <h3>Type scale — SF Pro</h3>
+      <div class="type-row"><span style="font-size:24px;font-weight:800;letter-spacing:-.02em">Large Title</span><span class="lbl">34 / Bold</span></div>
+      <div class="type-row"><span style="font-size:19px;font-weight:700">Title 2</span><span class="lbl">22 / Bold</span></div>
+      <div class="type-row"><span style="font-size:15px;font-weight:700">Headline</span><span class="lbl">17 / Semibold</span></div>
+      <div class="type-row"><span style="font-size:14px">Body</span><span class="lbl">17 / Regular</span></div>
+      <div class="type-row"><span style="font-size:12px;color:var(--txt-2)">Subhead</span><span class="lbl">15 / Regular</span></div>
+      <div class="type-row"><span style="font-size:11px;color:var(--txt-3)">Footnote / Caption</span><span class="lbl">13 · 11</span></div>
+      <p class="note">SF Pro Display for titles, SF Pro Text for body — system default keeps it native to iOS 26 and free with Dynamic Type.</p>
+    </div>
+
+    <div class="panel">
+      <h3>Iconography &amp; app icon</h3>
+      <div class="icons">
+        <svg class="appicon" viewBox="0 0 96 96" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="ic" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#34D399"/><stop offset="1" stop-color="#0E9F75"/></linearGradient></defs>
+          <rect width="96" height="96" rx="22" fill="url(#ic)"/>
+          <path d="M48 20a28 28 0 1 0 22 11" fill="none" stroke="#05231a" stroke-width="9" stroke-linecap="round" opacity=".9"/>
+          <path d="M48 39v18M39 48h18" stroke="#EAFBF4" stroke-width="7" stroke-linecap="round"/>
+        </svg>
+        <div class="iconchip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8FF0CE" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></div>
+        <div class="iconchip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FBBF6B" stroke-width="2" stroke-linecap="round"><path d="M5 20l4-9 4 5 6-11"/></svg></div>
+        <div class="iconchip"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FF8B6B" stroke-width="2" stroke-linecap="round"><path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/></svg></div>
+      </div>
+      <p class="note">Rounded SF Symbols at regular weight; duotone fills for rings. App-icon concept: an open arc (incomplete ring = "still building") cradling a plus — supportive progress, gentle clinical cue. Gradient green on near-black.</p>
+    </div>
+  </div>
+
+  <!-- ================= SCREENS ================= -->
+  <div class="section-h">Key screens</div>
+  <div class="phones">
+
+    <!-- ===== TODAY (active day) ===== -->
+    <div class="phone">
+      <p class="phone-cap">1 · Today — training day</p>
+      <p class="phone-desc">Daily plan + check-in + macros, with the new steps/active-energy ring as a first-class card.</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="overflow-y:auto;bottom:74px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between">
+            <div><div class="lt">Today</div><div class="lt-sub">Tuesday · Push day · Week 3</div></div>
+            <div title="Profile &amp; Settings" style="width:34px;height:34px;border-radius:50%;margin-top:12px;background:linear-gradient(160deg,#34D399,#0E9F75);display:flex;align-items:center;justify-content:center;color:#05231a;font-weight:800;font-size:14px">M</div>
+          </div>
+
+          <!-- steps/cardio ring card (NEW) -->
+          <div class="c">
+            <div class="c-row"><div class="c-title">Movement</div><span class="pill pill-green">+12% vs last wk</span></div>
+            <div style="display:flex;align-items:center;gap:16px;margin-top:10px">
+              <svg width="92" height="92" viewBox="0 0 92 92">
+                <circle cx="46" cy="46" r="38" fill="none" stroke="#1C272C" stroke-width="9"/>
+                <circle cx="46" cy="46" r="38" fill="none" stroke="#34D399" stroke-width="9" stroke-linecap="round"
+                  stroke-dasharray="239" stroke-dashoffset="70" transform="rotate(-90 46 46)"/>
+                <circle cx="46" cy="46" r="27" fill="none" stroke="#1C272C" stroke-width="9"/>
+                <circle cx="46" cy="46" r="27" fill="none" stroke="#FBBF6B" stroke-width="9" stroke-linecap="round"
+                  stroke-dasharray="170" stroke-dashoffset="60" transform="rotate(-90 46 46)"/>
+                <text x="46" y="43" text-anchor="middle" fill="#E9F0F1" font-size="15" font-weight="800">7,420</text>
+                <text x="46" y="57" text-anchor="middle" fill="#6E8085" font-size="9">steps</text>
+              </svg>
+              <div style="flex:1">
+                <div class="legend" style="flex-direction:column;gap:7px">
+                  <div><span class="dot" style="background:#34D399"></span> Steps · 7,420 / 8,100 goal</div>
+                  <div><span class="dot" style="background:#FBBF6B"></span> Active energy · 310 kcal</div>
+                </div>
+                <p class="note" style="margin-top:9px;font-size:10.5px">Goal adapts to your trend — nudged just above last week.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- check-in -->
+          <div class="c">
+            <div class="c-row"><div class="c-title">Daily check-in</div><span class="c-meta">tap to log</span></div>
+            <div style="display:flex;justify-content:space-between;margin-top:12px">
+              <div style="text-align:center"><div style="font-size:20px">&#128526;</div><span class="c-meta">Energy</span></div>
+              <div style="text-align:center"><div style="font-size:20px">&#128556;</div><span class="c-meta">Hunger</span></div>
+              <div style="text-align:center"><div style="font-size:20px">&#128564;</div><span class="c-meta">Sleep</span></div>
+              <div style="text-align:center"><div style="font-size:20px">&#128170;</div><span class="c-meta">Soreness</span></div>
+            </div>
+          </div>
+
+          <!-- plan -->
+          <div class="c">
+            <div class="c-row"><div class="c-title">Push A</div><span class="pill pill-green">muscle-sparing</span></div>
+            <div class="move"><div class="mi">&#127947;</div><div class="mt"><b>DB Bench Press</b><span>3 × 8 · RPE 7</span></div><div class="check done"></div></div>
+            <div class="move"><div class="mi">&#128170;</div><div class="mt"><b>Incline DB Press</b><span>3 × 10</span></div><div class="check"></div></div>
+            <div class="move"><div class="mi">&#129495;</div><div class="mt"><b>Cable Lateral Raise</b><span>3 × 12</span></div><div class="check"></div></div>
+          </div>
+
+          <!-- macros -->
+          <div class="c">
+            <div class="c-row"><div class="c-title">Macros</div><span class="pill pill-amber">protein priority</span></div>
+            <div class="macro-grid">
+              <div><b>132<span style="font-size:10px">/150g</span></b><span>Protein</span><div class="macro-bar"><i style="width:88%;background:#34D399"></i></div></div>
+              <div><b>140g</b><span>Carbs</span><div class="macro-bar"><i style="width:62%;background:#FBBF6B"></i></div></div>
+              <div><b>48g</b><span>Fat</span><div class="macro-bar"><i style="width:55%;background:#A78BFA"></i></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Today</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h4l2-7 4 14 2-7h4"/></svg>Workout</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M10 19v-8M16 19v-5M22 19H2"/></svg>Progress</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== TODAY (rest day) ===== -->
+    <div class="phone">
+      <p class="phone-cap">1b · Today — rest / recovery day</p>
+      <p class="phone-desc">Non-weight state: intentional, not an empty list. Gentle activity nudge, no plan guilt.</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="overflow-y:auto;bottom:74px">
+          <div class="lt">Today</div>
+          <div class="lt-sub">Sunday · Recovery · Week 3</div>
+
+          <div class="c" style="background:linear-gradient(160deg,rgba(167,139,250,.14),rgba(22,31,35,.6));border-color:#2c2740">
+            <div class="c-row"><div class="c-title">Rest day</div><span class="pill pill-rest">planned</span></div>
+            <p class="note" style="margin-top:8px;color:var(--txt-2)">Muscle repairs on rest days — this one's intentional. A light walk is plenty.</p>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:12px">
+              <svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="#241f33" stroke-width="7"/><circle cx="32" cy="32" r="26" fill="none" stroke="#A78BFA" stroke-width="7" stroke-linecap="round" stroke-dasharray="163" stroke-dashoffset="120" transform="rotate(-90 32 32)"/><text x="32" y="36" text-anchor="middle" fill="#cdbcff" font-size="12" font-weight="800">3.1k</text></svg>
+              <div style="flex:1"><b style="font-size:13px">Gentle goal · 4,000 steps</b><p class="note" style="margin-top:4px">Lower than training days, on purpose.</p></div>
+            </div>
+          </div>
+
+          <div class="c">
+            <div class="c-row"><div class="c-title">Daily check-in</div><span class="c-meta">tap to log</span></div>
+            <div style="display:flex;justify-content:space-between;margin-top:12px">
+              <div style="text-align:center"><div style="font-size:20px">&#128524;</div><span class="c-meta">Energy</span></div>
+              <div style="text-align:center"><div style="font-size:20px">&#128523;</div><span class="c-meta">Hunger</span></div>
+              <div style="text-align:center"><div style="font-size:20px">&#128564;</div><span class="c-meta">Sleep</span></div>
+              <div style="text-align:center"><div style="font-size:20px">&#129336;</div><span class="c-meta">Soreness</span></div>
+            </div>
+          </div>
+
+          <div class="c">
+            <div class="c-row"><div class="c-title">Suggested</div><span class="pill pill-green">optional</span></div>
+            <div class="move"><div class="mi">&#129496;</div><div class="mt"><b>Mobility flow</b><span>8 min · hips + shoulders</span></div><div class="check"></div></div>
+            <div class="move"><div class="mi">&#127939;</div><div class="mt"><b>Easy walk</b><span>20–30 min · zone 1</span></div><div class="check"></div></div>
+          </div>
+
+          <div class="c">
+            <div class="c-row"><div class="c-title">Macros</div><span class="pill pill-amber">protein priority</span></div>
+            <p class="note" style="margin-top:6px">Keep protein up even on rest days — it's what protects muscle on GLP-1.</p>
+            <div class="macro-grid" style="margin-top:8px">
+              <div><b>96<span style="font-size:10px">/150g</span></b><span>Protein</span><div class="macro-bar"><i style="width:64%;background:#34D399"></i></div></div>
+              <div><b>88g</b><span>Carbs</span><div class="macro-bar"><i style="width:40%;background:#FBBF6B"></i></div></div>
+              <div><b>36g</b><span>Fat</span><div class="macro-bar"><i style="width:42%;background:#A78BFA"></i></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Today</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h4l2-7 4 14 2-7h4"/></svg>Workout</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M10 19v-8M16 19v-5M22 19H2"/></svg>Progress</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== WORKOUT / AI CHAT ===== -->
+    <div class="phone">
+      <p class="phone-cap">1c · Workout — AI chat (the core flow)</p>
+      <p class="phone-desc">Log by speaking or typing; Claude parses → you confirm. Same flow doubles as the manual cardio fallback.</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="bottom:0;padding:6px 14px 0;display:flex;flex-direction:column">
+          <div style="text-align:center;padding:8px 0 2px;font-size:13px;font-weight:700;border-bottom:1px solid var(--stroke)">Log Workout</div>
+
+          <div style="flex:1;overflow-y:auto;padding:14px 2px 8px;display:flex;flex-direction:column;gap:10px">
+            <!-- user bubble -->
+            <div style="align-self:flex-end;max-width:78%;background:var(--glp-green);color:#05231a;font-size:12.5px;font-weight:500;padding:9px 13px;border-radius:16px 16px 4px 16px">3 sets goblet squat, 16kg, RPE 7</div>
+            <!-- parsing indicator -->
+            <div style="display:flex;align-items:center;gap:6px;color:var(--txt-3);font-size:11px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#34D399" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/></svg> Parsing…</div>
+
+            <!-- confirm card -->
+            <div class="c" style="margin:2px 0 0;border-color:var(--glp-deep,#0E9F75)">
+              <div class="c-row" style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:7px"><svg width="15" height="15" viewBox="0 0 24 24" fill="#34D399"><path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.8 7.2 17l.9-5.4L4.2 7.7l5.4-.8z"/></svg><b style="font-size:12.5px">Got it — confirm these sets?</b></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-top:1px solid var(--stroke)"><span>Goblet Squat</span><span style="color:var(--txt-3)">8 reps · 16 kg · RPE 7</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-top:1px solid var(--stroke)"><span>Goblet Squat</span><span style="color:var(--txt-3)">8 reps · 16 kg · RPE 7</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-top:1px solid var(--stroke)"><span>Goblet Squat</span><span style="color:var(--txt-3)">8 reps · 16 kg · RPE 7</span></div>
+              <div style="display:flex;gap:9px;margin-top:10px">
+                <div style="flex:0 0 auto;font-size:12px;font-weight:600;color:var(--coral);border:1px solid var(--stroke);border-radius:11px;padding:8px 14px">Discard</div>
+                <div style="flex:1;text-align:center;font-size:12px;font-weight:800;color:#05231a;background:var(--glp-green);border-radius:11px;padding:8px">Log it</div>
+              </div>
+            </div>
+
+            <!-- cardio fallback example -->
+            <div style="align-self:flex-end;max-width:78%;background:var(--glp-green);color:#05231a;font-size:12.5px;font-weight:500;padding:9px 13px;border-radius:16px 16px 4px 16px">30 min stationary bike, moderate</div>
+            <div style="align-self:flex-start;max-width:80%;background:var(--card);border:1px solid var(--stroke);font-size:12.5px;padding:9px 13px;border-radius:16px 16px 16px 4px">Logged as cardio &#127939; — 30 min, ~240 kcal. Counts toward today's activity.</div>
+          </div>
+
+          <!-- input bar -->
+          <div style="display:flex;align-items:center;gap:9px;padding:10px 2px 14px;border-top:1px solid var(--stroke)">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="#34D399"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="#34D399" stroke-width="1.6"/></svg>
+            <div style="flex:1;background:var(--card-2);border-radius:13px;padding:9px 13px;font-size:12px;color:var(--txt-3)">Describe your sets…</div>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="#34D399"><circle cx="12" cy="12" r="11"/><path d="M12 16V8M8 11l4-4 4 4" fill="none" stroke="#05231a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Today</div>
+          <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h4l2-7 4 14 2-7h4"/></svg>Workout</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M10 19v-8M16 19v-5M22 19H2"/></svg>Progress</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PROGRESS ===== -->
+    <div class="phone">
+      <p class="phone-cap">2 · Progress</p>
+      <p class="phone-desc">Weight + measurement charts and wellness sparklines, with NEW steps + active-energy sparklines.</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="overflow-y:auto;bottom:74px">
+          <div class="lt">Progress</div>
+          <div class="seg" style="margin-top:8px"><div class="on">3M</div><div>6M</div><div>1Y</div><div>All</div></div>
+
+          <!-- weight chart -->
+          <div class="c">
+            <div class="c-row"><div class="c-title">Weight</div><span class="pill pill-green">&#8211;6.4 lb / 90d</span></div>
+            <svg width="100%" height="92" viewBox="0 0 280 92" preserveAspectRatio="none" style="margin-top:8px">
+              <polyline fill="none" stroke="#34D399" stroke-width="2.5" points="0,18 35,24 70,30 105,28 140,40 175,46 210,52 245,60 280,66"/>
+              <polyline fill="url(#g1)" stroke="none" points="0,18 35,24 70,30 105,28 140,40 175,46 210,52 245,60 280,66 280,92 0,92"/>
+              <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#34D399" stop-opacity=".28"/><stop offset="1" stop-color="#34D399" stop-opacity="0"/></linearGradient></defs>
+            </svg>
+          </div>
+
+          <!-- measurements -->
+          <div class="c">
+            <div class="c-title">Body measurements</div>
+            <div style="display:flex;gap:10px;margin-top:10px">
+              <div style="flex:1;text-align:center;background:var(--card-2);border-radius:12px;padding:10px"><b style="font-size:15px;color:#A78BFA">34.5"</b><div class="c-meta">Waist &#8595;1.2"</div></div>
+              <div style="flex:1;text-align:center;background:var(--card-2);border-radius:12px;padding:10px"><b style="font-size:15px;color:#34D399">14.8"</b><div class="c-meta">Arm &#8593;0.3"</div></div>
+              <div style="flex:1;text-align:center;background:var(--card-2);border-radius:12px;padding:10px"><b style="font-size:15px;color:#A78BFA">39"</b><div class="c-meta">Hip &#8595;0.8"</div></div>
+            </div>
+          </div>
+
+          <!-- NEW activity sparklines -->
+          <div class="c">
+            <div class="c-row"><div class="c-title">Activity</div><span class="pill pill-amber">NEW</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+              <div><b style="font-size:13px">Steps</b><div class="c-meta">avg 7,180 / day</div></div>
+              <svg width="120" height="34" viewBox="0 0 120 34"><polyline fill="none" stroke="#34D399" stroke-width="2" points="0,24 15,20 30,26 45,14 60,18 75,10 90,16 105,8 120,12"/></svg>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;border-top:1px solid var(--stroke);padding-top:12px">
+              <div><b style="font-size:13px">Active energy</b><div class="c-meta">avg 295 kcal / day</div></div>
+              <svg width="120" height="34" viewBox="0 0 120 34"><polyline fill="none" stroke="#FBBF6B" stroke-width="2" points="0,20 15,22 30,16 45,18 60,12 75,16 90,10 105,14 120,9"/></svg>
+            </div>
+          </div>
+
+          <!-- wellness -->
+          <div class="c">
+            <div class="c-title">Wellness</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+              <div><b style="font-size:13px">Energy</b><div class="c-meta">trending up</div></div>
+              <svg width="120" height="30" viewBox="0 0 120 30"><polyline fill="none" stroke="#8FF0CE" stroke-width="2" points="0,20 20,22 40,16 60,18 80,12 100,10 120,8"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Today</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h4l2-7 4 14 2-7h4"/></svg>Workout</div>
+          <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M10 19v-8M16 19v-5M22 19H2"/></svg>Progress</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PAYWALL ===== -->
+    <div class="phone">
+      <p class="phone-cap">3 · Paywall / trial offer</p>
+      <p class="phone-desc">Soft, value-first. 1-week free trial &#8594; subscription. Shown at a moment of value, not a launch wall.</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="bottom:0;padding:6px 18px 18px;display:flex;flex-direction:column">
+          <div style="text-align:right;margin-top:6px"><span class="c-meta" style="font-size:13px">&#10005;</span></div>
+          <div style="text-align:center;margin-top:6px">
+            <svg width="58" height="58" viewBox="0 0 96 96" style="border-radius:18px"><defs><linearGradient id="ic2" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34D399"/><stop offset="1" stop-color="#0E9F75"/></linearGradient></defs><rect width="96" height="96" rx="22" fill="url(#ic2)"/><path d="M48 20a28 28 0 1 0 22 11" fill="none" stroke="#05231a" stroke-width="9" stroke-linecap="round"/><path d="M48 39v18M39 48h18" stroke="#EAFBF4" stroke-width="7" stroke-linecap="round"/></svg>
+            <div style="font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:12px">Keep your momentum</div>
+            <p class="note" style="margin:6px 14px 0">Your plan adapts as you do. Try everything free for 7 days.</p>
+          </div>
+
+          <div style="margin-top:18px">
+            <div class="feat"><div class="fi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8FF0CE" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div><div><b>AI-built plans that adapt</b><span>Adjusts to your check-ins, energy, and dose.</span></div></div>
+            <div class="feat"><div class="fi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8FF0CE" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div><div><b>Muscle-retention tracking</b><span>Macros + measurements + activity in one signal.</span></div></div>
+            <div class="feat"><div class="fi"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8FF0CE" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div><div><b>Full history &amp; trend reports</b><span>See progress over months, not just today.</span></div></div>
+          </div>
+
+          <div style="margin-top:auto">
+            <div style="display:flex;gap:10px;margin-bottom:12px">
+              <div style="flex:1;border:1px solid var(--stroke);border-radius:14px;padding:12px;text-align:center"><div class="c-meta">Monthly</div><b style="font-size:15px">$9.99</b></div>
+              <div style="flex:1;border:1.5px solid var(--glp-green);border-radius:14px;padding:12px;text-align:center;position:relative;background:rgba(52,211,153,.07)"><span class="pill pill-green" style="position:absolute;top:-9px;left:50%;transform:translateX(-50%)">BEST VALUE</span><div class="c-meta">Annual</div><b style="font-size:15px">$59.99</b><div class="c-meta">$5/mo</div></div>
+            </div>
+            <button class="btn">Start 7-day free trial</button>
+            <p class="small" style="margin-top:10px">Free for 7 days, then $59.99/yr. Cancel anytime in Settings. <br><a class="link">Restore</a> · <a class="link">Terms</a> · <a class="link">Privacy</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ONBOARDING ===== -->
+    <div class="phone">
+      <p class="phone-cap">4 · Onboarding — Watch + HealthKit</p>
+      <p class="phone-desc">The activity-source step: Apple Watch question, then HealthKit permission framed by what it unlocks.</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="bottom:0;padding:6px 18px 18px;display:flex;flex-direction:column">
+          <div style="display:flex;gap:5px;margin-top:10px">
+            <i style="flex:1;height:4px;border-radius:9px;background:#34D399"></i>
+            <i style="flex:1;height:4px;border-radius:9px;background:#34D399"></i>
+            <i style="flex:1;height:4px;border-radius:9px;background:#34D399"></i>
+            <i style="flex:1;height:4px;border-radius:9px;background:#26343A"></i>
+            <i style="flex:1;height:4px;border-radius:9px;background:#26343A"></i>
+          </div>
+          <div style="font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:22px">How do you track movement?</div>
+          <p class="note" style="margin-top:6px">We read steps and active energy from your iPhone by default. A Watch makes it more accurate — your call.</p>
+
+          <div style="margin-top:18px">
+            <div class="c" style="border-color:#34D399;background:rgba(52,211,153,.07)">
+              <div class="c-row"><div style="display:flex;align-items:center;gap:11px"><span style="font-size:22px">&#8986;</span><div><b style="font-size:13px">I use an Apple Watch</b><div class="c-meta">Adds heart rate + workouts</div></div></div><div class="check done"></div></div>
+            </div>
+            <div class="c">
+              <div class="c-row"><div style="display:flex;align-items:center;gap:11px"><span style="font-size:22px">&#128241;</span><div><b style="font-size:13px">iPhone only</b><div class="c-meta">Steps + distance from your phone</div></div></div><div class="check"></div></div>
+            </div>
+            <div class="c">
+              <div class="c-row"><div style="display:flex;align-items:center;gap:11px"><span style="font-size:22px">&#9999;</span><div><b style="font-size:13px">I'll log manually</b><div class="c-meta">Tell the app via chat anytime</div></div></div><div class="check"></div></div>
+            </div>
+          </div>
+
+          <div class="c" style="margin-top:4px;background:var(--card-2)">
+            <div style="display:flex;align-items:flex-start;gap:10px"><span style="font-size:18px">&#10084;&#65039;</span><div><b style="font-size:12.5px">Connect Apple Health</b><p class="note" style="margin-top:3px;font-size:10.5px">We only read steps, distance, active energy, and workouts. Nothing is shared. You can change this anytime.</p></div></div>
+          </div>
+
+          <div style="margin-top:auto">
+            <button class="btn">Allow &amp; continue</button>
+            <button class="btn-ghost">Set up later</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PROFILE / SETTINGS ===== -->
+    <div class="phone">
+      <p class="phone-cap">5 · Profile &amp; Settings</p>
+      <p class="phone-desc">Reached from the avatar on Today — not a tab. Holds the GLP, subscription, and connection context.</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="overflow-y:auto;bottom:0">
+          <div class="lt">Profile</div>
+          <div style="display:flex;align-items:center;gap:13px;margin:8px 2px 16px">
+            <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(160deg,#34D399,#0E9F75);display:flex;align-items:center;justify-content:center;color:#05231a;font-weight:800;font-size:20px">M</div>
+            <div><b style="font-size:15px">Mickey</b><div class="c-meta">mickeyt777@gmail.com</div></div>
+          </div>
+
+          <!-- subscription -->
+          <div class="c" style="background:linear-gradient(160deg,rgba(52,211,153,.13),rgba(22,31,35,.5));border-color:#1f4a3c">
+            <div class="c-row"><div class="c-title">Free trial</div><span class="pill pill-green">4 days left</span></div>
+            <p class="note" style="margin-top:6px">Renews to Annual · $59.99/yr on Jun 6. <a class="link">Manage</a></p>
+          </div>
+
+          <!-- GLP context -->
+          <div class="c">
+            <div class="c-meta" style="margin-bottom:8px">GLP-1</div>
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">Medication</span><span class="c-meta" style="font-size:12px">Semaglutide</span></div>
+            <div class="c-row" style="padding:7px 0"><span style="font-size:13px">Current dose</span><span class="c-meta" style="font-size:12px">1.0 mg / wk &#8250;</span></div>
+          </div>
+
+          <!-- connections -->
+          <div class="c">
+            <div class="c-meta" style="margin-bottom:8px">Activity &amp; health</div>
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">&#8986;&#65039; Apple Watch</span><span class="pill pill-green">Connected</span></div>
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">&#10084;&#65039; Apple Health</span><span class="pill pill-green">Connected</span></div>
+            <div class="c-row" style="padding:7px 0"><span style="font-size:13px">Units</span><span class="c-meta" style="font-size:12px">lb · in &#8250;</span></div>
+          </div>
+
+          <!-- goals + notifs -->
+          <div class="c">
+            <div class="c-meta" style="margin-bottom:8px">Coaching</div>
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">Adaptive step goal</span><span class="c-meta" style="font-size:12px">On &#8250;</span></div>
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">Protein target</span><span class="c-meta" style="font-size:12px">150 g &#8250;</span></div>
+            <div class="c-row" style="padding:7px 0"><span style="font-size:13px">Reminders &amp; nudges</span><span class="c-meta" style="font-size:12px">&#8250;</span></div>
+          </div>
+
+          <!-- account -->
+          <div class="c" style="margin-bottom:20px">
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">Export my data</span><span class="c-meta">&#8250;</span></div>
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">Privacy</span><span class="c-meta">&#8250;</span></div>
+            <div class="c-row" style="padding:7px 0"><span style="font-size:13px;color:var(--coral)">Sign out</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="section-h">Light mode — full set</div>
+  <p class="doc-sub" style="margin:-6px 0 18px;font-size:12.5px">Same palette, retuned for white. GLP Green deepens to <b style="color:var(--glp-mint)">#0E9F75</b> for text/icons (bright #34D399 fails contrast on white); ring arcs and fills also deepen so they read on light. Backgrounds are warm off-white, not stark white — supportive, not clinical.</p>
+  <div class="phones light">
+
+    <!-- TODAY training (light) -->
+    <div class="phone">
+      <p class="phone-cap">1 · Today — training day</p>
+      <p class="phone-desc">&nbsp;</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="overflow-y:auto;bottom:74px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between">
+            <div><div class="lt">Today</div><div class="lt-sub">Tuesday · Push day · Week 3</div></div>
+            <div style="width:34px;height:34px;border-radius:50%;margin-top:12px;background:linear-gradient(160deg,#34D399,#0E9F75);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px">M</div>
+          </div>
+          <div class="c">
+            <div class="c-row"><div class="c-title">Movement</div><span class="pill pill-green">+12% vs last wk</span></div>
+            <div style="display:flex;align-items:center;gap:16px;margin-top:10px">
+              <svg width="92" height="92" viewBox="0 0 92 92">
+                <circle cx="46" cy="46" r="38" fill="none" stroke="#E8EDEB" stroke-width="9"/>
+                <circle cx="46" cy="46" r="38" fill="none" stroke="#0E9F75" stroke-width="9" stroke-linecap="round" stroke-dasharray="239" stroke-dashoffset="70" transform="rotate(-90 46 46)"/>
+                <circle cx="46" cy="46" r="27" fill="none" stroke="#E8EDEB" stroke-width="9"/>
+                <circle cx="46" cy="46" r="27" fill="none" stroke="#D98A1E" stroke-width="9" stroke-linecap="round" stroke-dasharray="170" stroke-dashoffset="60" transform="rotate(-90 46 46)"/>
+                <text x="46" y="43" text-anchor="middle" fill="#0E1417" font-size="15" font-weight="800">7,420</text>
+                <text x="46" y="57" text-anchor="middle" fill="#7A8B8E" font-size="9">steps</text>
+              </svg>
+              <div style="flex:1">
+                <div class="legend" style="flex-direction:column;gap:7px">
+                  <div><span class="dot" style="background:#0E9F75"></span> Steps · 7,420 / 8,100 goal</div>
+                  <div><span class="dot" style="background:#D98A1E"></span> Active energy · 310 kcal</div>
+                </div>
+                <p class="note" style="margin-top:9px;font-size:10.5px">Goal adapts to your trend — nudged just above last week.</p>
+              </div>
+            </div>
+          </div>
+          <div class="c">
+            <div class="c-row"><div class="c-title">Daily check-in</div><span class="c-meta">tap to log</span></div>
+            <div style="display:flex;justify-content:space-between;margin-top:12px">
+              <div style="text-align:center"><div style="font-size:20px">&#128526;</div><span class="c-meta">Energy</span></div>
+              <div style="text-align:center"><div style="font-size:20px">&#128556;</div><span class="c-meta">Hunger</span></div>
+              <div style="text-align:center"><div style="font-size:20px">&#128564;</div><span class="c-meta">Sleep</span></div>
+              <div style="text-align:center"><div style="font-size:20px">&#128170;</div><span class="c-meta">Soreness</span></div>
+            </div>
+          </div>
+          <div class="c">
+            <div class="c-row"><div class="c-title">Push A</div><span class="pill pill-green">muscle-sparing</span></div>
+            <div class="move"><div class="mi">&#127947;</div><div class="mt"><b>DB Bench Press</b><span>3 × 8 · RPE 7</span></div><div class="check done"></div></div>
+            <div class="move"><div class="mi">&#128170;</div><div class="mt"><b>Incline DB Press</b><span>3 × 10</span></div><div class="check"></div></div>
+            <div class="move"><div class="mi">&#129495;</div><div class="mt"><b>Cable Lateral Raise</b><span>3 × 12</span></div><div class="check"></div></div>
+          </div>
+          <div class="c">
+            <div class="c-row"><div class="c-title">Macros</div><span class="pill pill-amber">protein priority</span></div>
+            <div class="macro-grid">
+              <div><b>132<span style="font-size:10px;color:var(--txt-3)">/150g</span></b><span>Protein</span><div class="macro-bar"><i style="width:88%;background:#0E9F75"></i></div></div>
+              <div><b>140g</b><span>Carbs</span><div class="macro-bar"><i style="width:62%;background:#D98A1E"></i></div></div>
+              <div><b>48g</b><span>Fat</span><div class="macro-bar"><i style="width:55%;background:#7C5CD6"></i></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Today</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h4l2-7 4 14 2-7h4"/></svg>Workout</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M10 19v-8M16 19v-5M22 19H2"/></svg>Progress</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TODAY rest (light) -->
+    <div class="phone">
+      <p class="phone-cap">1b · Today — rest / recovery</p>
+      <p class="phone-desc">&nbsp;</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="overflow-y:auto;bottom:74px">
+          <div class="lt">Today</div>
+          <div class="lt-sub">Sunday · Recovery · Week 3</div>
+          <div class="c" style="background:linear-gradient(160deg,rgba(124,92,214,.10),#fff);border-color:#E4DEF5">
+            <div class="c-row"><div class="c-title">Rest day</div><span class="pill pill-rest">planned</span></div>
+            <p class="note" style="margin-top:8px">Muscle repairs on rest days — this one's intentional. A light walk is plenty.</p>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:12px">
+              <svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="26" fill="none" stroke="#ECE8F8" stroke-width="7"/><circle cx="32" cy="32" r="26" fill="none" stroke="#7C5CD6" stroke-width="7" stroke-linecap="round" stroke-dasharray="163" stroke-dashoffset="120" transform="rotate(-90 32 32)"/><text x="32" y="36" text-anchor="middle" fill="#5B3FA8" font-size="12" font-weight="800">3.1k</text></svg>
+              <div style="flex:1"><b style="font-size:13px">Gentle goal · 4,000 steps</b><p class="note" style="margin-top:4px">Lower than training days, on purpose.</p></div>
+            </div>
+          </div>
+          <div class="c">
+            <div class="c-row"><div class="c-title">Daily check-in</div><span class="c-meta">tap to log</span></div>
+            <div style="display:flex;justify-content:space-between;margin-top:12px">
+              <div style="text-align:center"><div style="font-size:20px">&#128524;</div><span class="c-meta">Energy</span></div>
+              <div style="text-align:center"><div style="font-size:20px">&#128523;</div><span class="c-meta">Hunger</span></div>
+              <div style="text-align:center"><div style="font-size:20px">&#128564;</div><span class="c-meta">Sleep</span></div>
+              <div style="text-align:center"><div style="font-size:20px">&#129336;</div><span class="c-meta">Soreness</span></div>
+            </div>
+          </div>
+          <div class="c">
+            <div class="c-row"><div class="c-title">Suggested</div><span class="pill pill-green">optional</span></div>
+            <div class="move"><div class="mi">&#129496;</div><div class="mt"><b>Mobility flow</b><span>8 min · hips + shoulders</span></div><div class="check"></div></div>
+            <div class="move"><div class="mi">&#127939;</div><div class="mt"><b>Easy walk</b><span>20–30 min · zone 1</span></div><div class="check"></div></div>
+          </div>
+          <div class="c">
+            <div class="c-row"><div class="c-title">Macros</div><span class="pill pill-amber">protein priority</span></div>
+            <p class="note" style="margin-top:6px">Keep protein up even on rest days — it's what protects muscle on GLP-1.</p>
+            <div class="macro-grid" style="margin-top:8px">
+              <div><b>96<span style="font-size:10px;color:var(--txt-3)">/150g</span></b><span>Protein</span><div class="macro-bar"><i style="width:64%;background:#0E9F75"></i></div></div>
+              <div><b>88g</b><span>Carbs</span><div class="macro-bar"><i style="width:40%;background:#D98A1E"></i></div></div>
+              <div><b>36g</b><span>Fat</span><div class="macro-bar"><i style="width:42%;background:#7C5CD6"></i></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Today</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h4l2-7 4 14 2-7h4"/></svg>Workout</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M10 19v-8M16 19v-5M22 19H2"/></svg>Progress</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WORKOUT chat (light) -->
+    <div class="phone">
+      <p class="phone-cap">1c · Workout — AI chat</p>
+      <p class="phone-desc">&nbsp;</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="bottom:0;padding:6px 14px 0;display:flex;flex-direction:column">
+          <div style="text-align:center;padding:8px 0 2px;font-size:13px;font-weight:700;border-bottom:1px solid var(--stroke)">Log Workout</div>
+          <div style="flex:1;overflow-y:auto;padding:14px 2px 8px;display:flex;flex-direction:column;gap:10px">
+            <div style="align-self:flex-end;max-width:78%;background:#0E9F75;color:#fff;font-size:12.5px;font-weight:500;padding:9px 13px;border-radius:16px 16px 4px 16px">3 sets goblet squat, 16kg, RPE 7</div>
+            <div style="display:flex;align-items:center;gap:6px;color:var(--txt-3);font-size:11px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0E9F75" stroke-width="2"><path d="M12 3v3M12 18v3M3 12h3M18 12h3M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/></svg> Parsing…</div>
+            <div class="c" style="margin:2px 0 0">
+              <div class="c-row" style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:7px"><svg width="15" height="15" viewBox="0 0 24 24" fill="#0E9F75"><path d="M12 2l2.4 4.9 5.4.8-3.9 3.8.9 5.4L12 14.8 7.2 17l.9-5.4L4.2 7.7l5.4-.8z"/></svg><b style="font-size:12.5px">Got it — confirm these sets?</b></div></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-top:1px solid var(--stroke)"><span>Goblet Squat</span><span style="color:var(--txt-3)">8 reps · 16 kg · RPE 7</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-top:1px solid var(--stroke)"><span>Goblet Squat</span><span style="color:var(--txt-3)">8 reps · 16 kg · RPE 7</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:12px;padding:5px 0;border-top:1px solid var(--stroke)"><span>Goblet Squat</span><span style="color:var(--txt-3)">8 reps · 16 kg · RPE 7</span></div>
+              <div style="display:flex;gap:9px;margin-top:10px">
+                <div style="flex:0 0 auto;font-size:12px;font-weight:600;color:var(--coral);border:1px solid var(--stroke);border-radius:11px;padding:8px 14px">Discard</div>
+                <div style="flex:1;text-align:center;font-size:12px;font-weight:800;color:#fff;background:#0E9F75;border-radius:11px;padding:8px">Log it</div>
+              </div>
+            </div>
+            <div style="align-self:flex-end;max-width:78%;background:#0E9F75;color:#fff;font-size:12.5px;font-weight:500;padding:9px 13px;border-radius:16px 16px 4px 16px">30 min stationary bike, moderate</div>
+            <div style="align-self:flex-start;max-width:80%;background:var(--card-2);border:1px solid var(--stroke);font-size:12.5px;padding:9px 13px;border-radius:16px 16px 16px 4px">Logged as cardio &#127939; — 30 min, ~240 kcal. Counts toward today's activity.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;padding:10px 2px 14px;border-top:1px solid var(--stroke)">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="#0E9F75"><path d="M12 14a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3z"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="#0E9F75" stroke-width="1.6"/></svg>
+            <div style="flex:1;background:var(--card-2);border-radius:13px;padding:9px 13px;font-size:12px;color:var(--txt-3)">Describe your sets…</div>
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="#0E9F75"><circle cx="12" cy="12" r="11"/><path d="M12 16V8M8 11l4-4 4 4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Today</div>
+          <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h4l2-7 4 14 2-7h4"/></svg>Workout</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M10 19v-8M16 19v-5M22 19H2"/></svg>Progress</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROGRESS (light) -->
+    <div class="phone">
+      <p class="phone-cap">2 · Progress</p>
+      <p class="phone-desc">&nbsp;</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="overflow-y:auto;bottom:74px">
+          <div class="lt">Progress</div>
+          <div class="seg" style="margin-top:8px"><div class="on">3M</div><div>6M</div><div>1Y</div><div>All</div></div>
+          <div class="c">
+            <div class="c-row"><div class="c-title">Weight</div><span class="pill pill-green">&#8211;6.4 lb / 90d</span></div>
+            <svg width="100%" height="92" viewBox="0 0 280 92" preserveAspectRatio="none" style="margin-top:8px">
+              <polyline fill="none" stroke="#0E9F75" stroke-width="2.5" points="0,18 35,24 70,30 105,28 140,40 175,46 210,52 245,60 280,66"/>
+              <polyline fill="url(#g1l)" stroke="none" points="0,18 35,24 70,30 105,28 140,40 175,46 210,52 245,60 280,66 280,92 0,92"/>
+              <defs><linearGradient id="g1l" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0E9F75" stop-opacity=".22"/><stop offset="1" stop-color="#0E9F75" stop-opacity="0"/></linearGradient></defs>
+            </svg>
+          </div>
+          <div class="c">
+            <div class="c-title">Body measurements</div>
+            <div style="display:flex;gap:10px;margin-top:10px">
+              <div style="flex:1;text-align:center;background:var(--card-2);border-radius:12px;padding:10px"><b style="font-size:15px;color:#7C5CD6">34.5"</b><div class="c-meta">Waist &#8595;1.2"</div></div>
+              <div style="flex:1;text-align:center;background:var(--card-2);border-radius:12px;padding:10px"><b style="font-size:15px;color:#0E9F75">14.8"</b><div class="c-meta">Arm &#8593;0.3"</div></div>
+              <div style="flex:1;text-align:center;background:var(--card-2);border-radius:12px;padding:10px"><b style="font-size:15px;color:#7C5CD6">39"</b><div class="c-meta">Hip &#8595;0.8"</div></div>
+            </div>
+          </div>
+          <div class="c">
+            <div class="c-row"><div class="c-title">Activity</div><span class="pill pill-amber">NEW</span></div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+              <div><b style="font-size:13px">Steps</b><div class="c-meta">avg 7,180 / day</div></div>
+              <svg width="120" height="34" viewBox="0 0 120 34"><polyline fill="none" stroke="#0E9F75" stroke-width="2" points="0,24 15,20 30,26 45,14 60,18 75,10 90,16 105,8 120,12"/></svg>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;border-top:1px solid var(--stroke);padding-top:12px">
+              <div><b style="font-size:13px">Active energy</b><div class="c-meta">avg 295 kcal / day</div></div>
+              <svg width="120" height="34" viewBox="0 0 120 34"><polyline fill="none" stroke="#D98A1E" stroke-width="2" points="0,20 15,22 30,16 45,18 60,12 75,16 90,10 105,14 120,9"/></svg>
+            </div>
+          </div>
+          <div class="c">
+            <div class="c-title">Wellness</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-top:12px">
+              <div><b style="font-size:13px">Energy</b><div class="c-meta">trending up</div></div>
+              <svg width="120" height="30" viewBox="0 0 120 30"><polyline fill="none" stroke="#0E9F75" stroke-width="2" points="0,20 20,22 40,16 60,18 80,12 100,10 120,8"/></svg>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar">
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg>Today</div>
+          <div class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12h4l2-7 4 14 2-7h4"/></svg>Workout</div>
+          <div class="tab active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M10 19v-8M16 19v-5M22 19H2"/></svg>Progress</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAYWALL (light) -->
+    <div class="phone">
+      <p class="phone-cap">3 · Paywall / trial</p>
+      <p class="phone-desc">&nbsp;</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="bottom:0;padding:6px 18px 18px;display:flex;flex-direction:column">
+          <div style="text-align:right;margin-top:6px"><span class="c-meta" style="font-size:13px">&#10005;</span></div>
+          <div style="text-align:center;margin-top:6px">
+            <svg width="58" height="58" viewBox="0 0 96 96" style="border-radius:18px"><defs><linearGradient id="ic3" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34D399"/><stop offset="1" stop-color="#0E9F75"/></linearGradient></defs><rect width="96" height="96" rx="22" fill="url(#ic3)"/><path d="M48 20a28 28 0 1 0 22 11" fill="none" stroke="#05231a" stroke-width="9" stroke-linecap="round"/><path d="M48 39v18M39 48h18" stroke="#EAFBF4" stroke-width="7" stroke-linecap="round"/></svg>
+            <div style="font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:12px">Keep your momentum</div>
+            <p class="note" style="margin:6px 14px 0">Your plan adapts as you do. Try everything free for 7 days.</p>
+          </div>
+          <div style="margin-top:18px">
+            <div class="feat"><div class="fi" style="background:rgba(14,159,117,.12)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0E9F75" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div><div><b>AI-built plans that adapt</b><span>Adjusts to your check-ins, energy, and dose.</span></div></div>
+            <div class="feat"><div class="fi" style="background:rgba(14,159,117,.12)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0E9F75" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div><div><b>Muscle-retention tracking</b><span>Macros + measurements + activity in one signal.</span></div></div>
+            <div class="feat"><div class="fi" style="background:rgba(14,159,117,.12)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0E9F75" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div><div><b>Full history &amp; trend reports</b><span>See progress over months, not just today.</span></div></div>
+          </div>
+          <div style="margin-top:auto">
+            <div style="display:flex;gap:10px;margin-bottom:12px">
+              <div style="flex:1;border:1px solid var(--stroke);border-radius:14px;padding:12px;text-align:center"><div class="c-meta">Monthly</div><b style="font-size:15px">$9.99</b></div>
+              <div style="flex:1;border:1.5px solid #0E9F75;border-radius:14px;padding:12px;text-align:center;position:relative;background:rgba(14,159,117,.06)"><span class="pill pill-green" style="position:absolute;top:-9px;left:50%;transform:translateX(-50%)">BEST VALUE</span><div class="c-meta">Annual</div><b style="font-size:15px">$59.99</b><div class="c-meta">$5/mo</div></div>
+            </div>
+            <button class="btn">Start 7-day free trial</button>
+            <p class="small" style="margin-top:10px">Free for 7 days, then $59.99/yr. Cancel anytime in Settings. <br><a class="link">Restore</a> · <a class="link">Terms</a> · <a class="link">Privacy</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ONBOARDING (light) -->
+    <div class="phone">
+      <p class="phone-cap">4 · Onboarding — Watch + HealthKit</p>
+      <p class="phone-desc">&nbsp;</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="bottom:0;padding:6px 18px 18px;display:flex;flex-direction:column">
+          <div style="display:flex;gap:5px;margin-top:10px">
+            <i style="flex:1;height:4px;border-radius:9px;background:#0E9F75"></i>
+            <i style="flex:1;height:4px;border-radius:9px;background:#0E9F75"></i>
+            <i style="flex:1;height:4px;border-radius:9px;background:#0E9F75"></i>
+            <i style="flex:1;height:4px;border-radius:9px;background:#E3E9E6"></i>
+            <i style="flex:1;height:4px;border-radius:9px;background:#E3E9E6"></i>
+          </div>
+          <div style="font-size:21px;font-weight:800;letter-spacing:-.02em;margin-top:22px">How do you track movement?</div>
+          <p class="note" style="margin-top:6px">We read steps and active energy from your iPhone by default. A Watch makes it more accurate — your call.</p>
+          <div style="margin-top:18px">
+            <div class="c" style="border-color:#0E9F75;background:rgba(14,159,117,.06)">
+              <div class="c-row"><div style="display:flex;align-items:center;gap:11px"><span style="font-size:22px">&#8986;</span><div><b style="font-size:13px">I use an Apple Watch</b><div class="c-meta">Adds heart rate + workouts</div></div></div><div class="check done"></div></div>
+            </div>
+            <div class="c">
+              <div class="c-row"><div style="display:flex;align-items:center;gap:11px"><span style="font-size:22px">&#128241;</span><div><b style="font-size:13px">iPhone only</b><div class="c-meta">Steps + distance from your phone</div></div></div><div class="check"></div></div>
+            </div>
+            <div class="c">
+              <div class="c-row"><div style="display:flex;align-items:center;gap:11px"><span style="font-size:22px">&#9999;</span><div><b style="font-size:13px">I'll log manually</b><div class="c-meta">Tell the app via chat anytime</div></div></div><div class="check"></div></div>
+            </div>
+          </div>
+          <div class="c" style="margin-top:4px;background:var(--card-2)">
+            <div style="display:flex;align-items:flex-start;gap:10px"><span style="font-size:18px">&#10084;&#65039;</span><div><b style="font-size:12.5px">Connect Apple Health</b><p class="note" style="margin-top:3px;font-size:10.5px">We only read steps, distance, active energy, and workouts. Nothing is shared. You can change this anytime.</p></div></div>
+          </div>
+          <div style="margin-top:auto">
+            <button class="btn">Allow &amp; continue</button>
+            <button class="btn-ghost">Set up later</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE (light) -->
+    <div class="phone">
+      <p class="phone-cap">5 · Profile &amp; Settings</p>
+      <p class="phone-desc">&nbsp;</p>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>&#9679;&#9679;&#9679; &#128246; &#128267;</span></div>
+        <div class="scr-body" style="overflow-y:auto;bottom:0">
+          <div class="lt">Profile</div>
+          <div style="display:flex;align-items:center;gap:13px;margin:8px 2px 16px">
+            <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(160deg,#34D399,#0E9F75);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px">M</div>
+            <div><b style="font-size:15px">Mickey</b><div class="c-meta">mickeyt777@gmail.com</div></div>
+          </div>
+          <div class="c" style="background:linear-gradient(160deg,rgba(14,159,117,.10),#fff);border-color:#CDEEE2">
+            <div class="c-row"><div class="c-title">Free trial</div><span class="pill pill-green">4 days left</span></div>
+            <p class="note" style="margin-top:6px">Renews to Annual · $59.99/yr on Jun 6. <a class="link">Manage</a></p>
+          </div>
+          <div class="c">
+            <div class="c-meta" style="margin-bottom:8px">GLP-1</div>
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">Medication</span><span class="c-meta" style="font-size:12px">Semaglutide</span></div>
+            <div class="c-row" style="padding:7px 0"><span style="font-size:13px">Current dose</span><span class="c-meta" style="font-size:12px">1.0 mg / wk &#8250;</span></div>
+          </div>
+          <div class="c">
+            <div class="c-meta" style="margin-bottom:8px">Activity &amp; health</div>
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">&#8986;&#65039; Apple Watch</span><span class="pill pill-green">Connected</span></div>
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">&#10084;&#65039; Apple Health</span><span class="pill pill-green">Connected</span></div>
+            <div class="c-row" style="padding:7px 0"><span style="font-size:13px">Units</span><span class="c-meta" style="font-size:12px">lb · in &#8250;</span></div>
+          </div>
+          <div class="c">
+            <div class="c-meta" style="margin-bottom:8px">Coaching</div>
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">Adaptive step goal</span><span class="c-meta" style="font-size:12px">On &#8250;</span></div>
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">Protein target</span><span class="c-meta" style="font-size:12px">150 g &#8250;</span></div>
+            <div class="c-row" style="padding:7px 0"><span style="font-size:13px">Reminders &amp; nudges</span><span class="c-meta" style="font-size:12px">&#8250;</span></div>
+          </div>
+          <div class="c" style="margin-bottom:20px">
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">Export my data</span><span class="c-meta">&#8250;</span></div>
+            <div class="c-row" style="padding:7px 0;border-bottom:1px solid var(--stroke)"><span style="font-size:13px">Privacy</span><span class="c-meta">&#8250;</span></div>
+            <div class="c-row" style="padding:7px 0"><span style="font-size:13px;color:var(--coral)">Sign out</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="doc-sub" style="margin-top:40px;font-size:12.5px;color:var(--txt-3)">Dark + light passes for all key screens. React freely — next moves once you point: tighten one screen to polish, lock the palette/icon, or start translating an approved screen to SwiftUI. Prices on the paywall are placeholders (roadmap marks them TBD).</p>
+</div>
+</body>
+</html>

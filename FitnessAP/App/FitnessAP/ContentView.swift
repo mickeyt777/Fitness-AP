@@ -17,6 +17,8 @@ struct ContentView: View {
 }
 
 struct MainTabView: View {
+    @EnvironmentObject var appState: AppState
+
     var body: some View {
         TabView {
             TodayView()
@@ -35,6 +37,7 @@ struct MainTabView: View {
                 .tabItem { Label("Coach", systemImage: "bubble.left.and.bubble.right") }
         }
         .toolbarBackground(.visible, for: .tabBar)
+        .task { await appState.loadUnitSystem() }
     }
 }
 

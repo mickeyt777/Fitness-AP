@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Fitness GLP — v2 Architecture</title>
+<style>
+  :root{
+    --bg:#fff; --text:#1a1a1a; --muted:#6b7280; --faint:#9ca3af;
+    --line:#e5e7eb; --card:#fff;
+    --p0:#94a3b8; --p1:#6366f1; --p2:#14b8a6; --p3:#f59e0b;
+    --risk:#dc2626;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--text);padding:22px;font-size:13px;line-height:1.45}
+
+  .topbar{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:6px}
+  h1{font-size:18px;font-weight:800;letter-spacing:-.01em}
+  .sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .rule{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;color:#334155;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:999px;padding:4px 10px;margin-top:6px}
+  .rule b{color:#0f172a}
+
+  /* ── phase toggles ── */
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .toggle{cursor:pointer;user-select:none;font-size:10.5px;font-weight:700;letter-spacing:.02em;border-radius:999px;padding:5px 11px 5px 9px;border:1.5px solid transparent;display:flex;align-items:center;gap:6px;transition:all .15s}
+  .toggle .d{width:9px;height:9px;border-radius:50%}
+  .toggle[data-on="false"]{opacity:.32;filter:grayscale(.7)}
+  .t0{background:#f1f5f9;color:#475569;border-color:#cbd5e1}.t0 .d{background:var(--p0)}
+  .t1{background:#eef2ff;color:#3730a3;border-color:#c7d2fe}.t1 .d{background:var(--p1)}
+  .t2{background:#f0fdfa;color:#0f766e;border-color:#99f6e4}.t2 .d{background:var(--p2)}
+  .t3{background:#fffbeb;color:#92400e;border-color:#fcd34d}.t3 .d{background:var(--p3)}
+  .hint{font-size:10px;color:var(--faint)}
+
+  /* ── canvas ── */
+  .arch{display:flex;gap:0;align-items:stretch;margin-top:18px}
+  .col{display:flex;flex-direction:column}
+  .col-ios{width:210px}
+  .col-backend{width:248px}
+  .col-data{width:182px}
+  .col-label{font-size:9.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--faint);margin-bottom:9px;text-align:center}
+
+  .flow{display:flex;flex-direction:column;align-items:center;justify-content:center;width:62px;padding-top:26px}
+  .flow .a{font-size:17px;color:#c4c9d4;line-height:1}
+  .flow .a.up{font-size:13px;margin-top:1px}
+  .flow .lbl{font-size:8.5px;color:var(--faint);text-align:center;max-width:56px;margin-top:3px;font-weight:600}
+
+  /* ── layer cards ── */
+  .layer{border-radius:9px;margin-bottom:9px;border:1.5px solid var(--line);overflow:hidden;background:var(--card);transition:opacity .2s,filter .2s}
+  .layer.dim{opacity:.22;filter:grayscale(.85)}
+  .lh{padding:7px 10px;font-size:11px;font-weight:800;display:flex;align-items:center;gap:6px;border-bottom:1px solid rgba(0,0,0,.05)}
+  .lb{padding:8px;display:flex;flex-direction:column;gap:5px}
+
+  .chip{position:relative;border-radius:6px;padding:5px 9px;font-size:11px;font-weight:600;border:1px solid transparent;display:flex;align-items:center;gap:6px;cursor:help;transition:transform .12s}
+  .chip:hover{transform:translateX(2px)}
+  .chip.dim{opacity:.25}
+  .chip .new{font-size:7.5px;font-weight:900;letter-spacing:.05em;background:#16a34a;color:#fff;border-radius:3px;padding:1px 4px;margin-left:auto}
+  .chip .risk{margin-left:auto;width:15px;height:15px;border-radius:50%;background:var(--risk);color:#fff;font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .chip .new + .risk{margin-left:5px}
+
+  /* phase palettes */
+  .p0 .lh{background:#f8fafc;color:#334155}.p0 .layer{border-color:#e2e8f0}.p0 .chip{background:#f1f5f9;color:#475569;border-color:#e2e8f0}
+  .p1 .lh{background:#eef2ff;color:#3730a3}.p1 .layer{border-color:#e0e7ff}.p1 .chip{background:#f5f3ff;color:#4f46e5;border-color:#e0e7ff}
+  .p2 .lh{background:#f0fdfa;color:#0f766e}.p2 .layer{border-color:#ccfbf1}.p2 .chip{background:#f0fdfa;color:#0f766e;border-color:#ccfbf1}
+  .p3 .lh{background:#fffbeb;color:#92400e}.p3 .layer{border-color:#fde68a}.p3 .chip{background:#fffbeb;color:#92400e;border-color:#fde68a}
+  .pm .lh{background:#f9fafb;color:#374151}.pm .layer{border-color:#e8e8e8}.pm .chip{background:#f9fafb;color:#374151;border-color:#eceef1}
+
+  /* engine branch */
+  .engine-wrap{margin:2px 0 9px;border:1.5px dashed #cbd5e1;border-radius:9px;background:#fafbfc;padding:8px}
+  .engine-head{display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px}
+  .engine-note{font-size:9px;color:var(--risk);font-weight:700;margin-left:auto;text-transform:none;letter-spacing:0}
+  .engine-grid{display:flex;flex-direction:column;gap:6px}
+  .emod{border:1.5px solid var(--line);border-radius:7px;overflow:hidden;background:#fff;transition:opacity .2s,filter .2s}
+  .emod.dim{opacity:.22;filter:grayscale(.85)}
+  .emh{padding:5px 8px;font-size:10.5px;font-weight:800;display:flex;align-items:center;gap:5px;border-bottom:1px solid rgba(0,0,0,.05)}
+  .emb{padding:6px 8px;display:flex;flex-wrap:wrap;gap:4px}
+  .emb .chip{padding:3px 7px;font-size:10px}
+  .branch-label{text-align:center;font-size:8.5px;font-weight:700;color:var(--faint);margin:1px 0 5px;letter-spacing:.03em}
+
+  /* data column */
+  .dcard{border:1.5px solid #e2e8f0;border-radius:8px;margin-bottom:8px;overflow:hidden;background:#fff}
+  .dch{padding:6px 9px;font-size:10.5px;font-weight:800;background:#f8fafc;border-bottom:1px solid #e2e8f0;color:#334155;display:flex;align-items:center;gap:5px}
+  .dcb{padding:7px 9px;font-size:10.5px;color:#64748b;line-height:1.7}
+  .star{color:#16a34a;font-weight:800}
+
+  /* principles strip */
+  .principles{margin-top:22px;border-top:1px solid var(--line);padding-top:14px}
+  .pr-title{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin-bottom:9px}
+  .pr-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+  .pr{border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:#fcfcfd}
+  .pr h4{font-size:11px;font-weight:800;color:#0f172a;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+  .pr p{font-size:10.5px;color:var(--muted)}
+
+  /* legend */
+  .legend{margin-top:16px;display:flex;gap:15px;flex-wrap:wrap;align-items:center;font-size:10px;color:var(--muted)}
+  .legend .it{display:flex;align-items:center;gap:5px}
+  .legend .nb{background:#16a34a;color:#fff;font-size:8px;font-weight:900;border-radius:3px;padding:1px 4px}
+  .legend .rb{width:14px;height:14px;border-radius:50%;background:var(--risk);color:#fff;font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center}
+
+  /* tooltip */
+  #tip{position:fixed;z-index:50;max-width:300px;background:#0f172a;color:#e2e8f0;font-size:11px;line-height:1.5;padding:9px 11px;border-radius:8px;box-shadow:0 8px 28px rgba(0,0,0,.28);pointer-events:none;opacity:0;transition:opacity .12s;border:1px solid rgba(255,255,255,.08)}
+  #tip .tt{font-weight:800;color:#fff;margin-bottom:3px;display:flex;align-items:center;gap:6px}
+  #tip .tr{color:#fca5a5;font-weight:800}
+  #tip .tp{display:inline-block;font-size:8.5px;font-weight:800;padding:1px 5px;border-radius:3px;margin-left:auto}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div>
+    <h1>Fitness GLP — V2 System Architecture</h1>
+    <div class="sub">Layered backend (Controller → Service → DB) · feature-driven iOS · phased build · June 2026</div>
+    <div class="rule">⛓️ Layering rule:&nbsp;<b>no layer reaches past its neighbor</b> — the engine is pure compute and never touches the DB</div>
+  </div>
+  <div>
+    <div class="controls" id="controls">
+      <span class="hint">Phases:</span>
+      <span class="toggle t0" data-phase="0" data-on="true"><span class="d"></span>0 · Hardening</span>
+      <span class="toggle t1" data-phase="1" data-on="true"><span class="d"></span>1 · Movements</span>
+      <span class="toggle t2" data-phase="2" data-on="true"><span class="d"></span>2 · Cardio</span>
+      <span class="toggle t3" data-phase="3" data-on="true"><span class="d"></span>3 · Monetize</span>
+    </div>
+    <div class="hint" style="text-align:right;margin-top:6px">Hover any block for its rationale · click a phase to toggle</div>
+  </div>
+</div>
+
+<div class="arch">
+
+  <!-- ── iOS ── -->
+  <div class="col col-ios">
+    <div class="col-label">iOS App · SwiftUI</div>
+
+    <div class="p0">
+      <div class="layer" data-phases="0" data-tip="App/ — single source of app config & identity. Config.swift replaces the hardcoded kBaseURL so staging/prod is env-driven, not a code change.">
+        <div class="lh">⚙️ App Core</div>
+        <div class="lb">
+          <span class="chip">AppState.swift</span>
+          <span class="chip">KeychainManager</span>
+          <span class="chip" data-phases="0">Config.swift<span class="new">NEW</span></span>
+          <span class="chip">APIClient.swift</span>
+        </div>
+      </div>
+      <div class="layer" data-phases="0,2,3" data-tip="Models split out of the v1 monolith (was heading past 600 lines). One file per domain kills the merge-conflict magnet and keeps Codable structs aligned with the API.">
+        <div class="lh">📦 Networking/Models</div>
+        <div class="lb">
+          <span class="chip">AuthModels</span>
+          <span class="chip">WorkoutModels</span>
+          <span class="chip">CheckinModels</span>
+          <span class="chip" data-phases="2">CardioModels<span class="new">NEW</span></span>
+          <span class="chip" data-phases="3">StoreModels<span class="new">NEW</span></span>
+        </div>
+      </div>
+      <div class="layer" data-phases="0" data-tip="Shared loading / empty / error views. V2 explicitly flagged ad-hoc blank states as a gap — HealthKit denials, timeouts and empty libraries all need one consistent pattern.">
+        <div class="lh">🧩 Shared/Components</div>
+        <div class="lb">
+          <span class="chip" data-phases="0">LoadingView<span class="new">NEW</span></span>
+          <span class="chip" data-phases="0">EmptyStateView<span class="new">NEW</span></span>
+          <span class="chip" data-phases="0">ErrorStateView<span class="new">NEW</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="p2">
+      <div class="layer" data-phases="2,3" data-tip="Platform integrations live behind a Service — no Feature view imports HealthKit or StoreKit directly. HealthKitService owns auth + anchor-based delta reads; StoreKitService owns entitlements.">
+        <div class="lh">📍 Services/ (platform)</div>
+        <div class="lb">
+          <span class="chip" data-phases="2">HealthKitService<span class="new">NEW</span></span>
+          <span class="chip" data-phases="3">StoreKitService<span class="new">NEW</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pm">
+      <div class="layer" data-phases="0,2,3" data-risk="1" data-tip="Each tab gets a thin ViewModel that isolates async fetches so the view stays declarative.">
+        <div class="lh">📱 Features/</div>
+        <div class="lb">
+          <span class="chip" data-risk="1" data-phases="0" data-tip="Today + ViewModel">Today + ViewModel<span class="risk">1</span></span>
+          <span class="chip">Workout + Parser</span>
+          <span class="chip">Progress</span>
+          <span class="chip">Onboarding</span>
+          <span class="chip" data-phases="3">Paywall<span class="new">NEW</span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="a">⇄</div>
+    <div class="lbl">JWT / Bearer</div>
+  </div>
+
+  <!-- ── Backend ── -->
+  <div class="col col-backend">
+    <div class="col-label">Backend · Node / Express</div>
+
+    <div class="p0">
+      <div class="layer" data-phases="0" data-tip="Gate every request before it reaches a route. requireSubscription is server-side — paid gating lives here, never in an iOS flag a user could flip. validate.js now applied on every mutating route (it was inconsistent in v1).">
+        <div class="lh">🛡️ Middleware (gate)</div>
+        <div class="lb">
+          <span class="chip">requireUser</span>
+          <span class="chip">requireSubscription</span>
+          <span class="chip" data-phases="0">validate · every route<span class="new">NEW</span></span>
+          <span class="chip">security / rate-limit</span>
+        </div>
+      </div>
+      <div class="layer" data-phases="0,2,3" data-tip="Routes are thin: parse → call a service → respond. No business logic, no DB queries inline (the v1 anti-pattern this refactor removes).">
+        <div class="lh">🔀 Routes/ (thin)</div>
+        <div class="lb">
+          <span class="chip">auth · users · profiles</span>
+          <span class="chip">workouts · checkins · macros</span>
+          <span class="chip" data-phases="2">cardio<span class="new">NEW</span></span>
+          <span class="chip" data-phases="3">webhooks · StoreKit<span class="new">NEW</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pm">
+      <div class="layer" data-phases="0,1,2,3" data-tip="The new heart of the system. ALL business logic and ALL DB access live here (via getDb()). Services are callable without HTTP, so v2 rules are testable and reusable across routes.">
+        <div class="lh">⚙️ Services/ — business logic <span style="margin-left:auto;font-size:8.5px;font-weight:800;color:#16a34a">DB ACCESS LIVES HERE</span></div>
+        <div class="lb">
+          <span class="chip" data-phases="0">workoutService<span class="new">NEW</span></span>
+          <span class="chip" data-phases="0">checkinService · macroService<span class="new">NEW</span></span>
+          <span class="chip" data-phases="1">movementService<span class="new">NEW</span></span>
+          <span class="chip" data-risk="3" data-phases="2" data-tip="cardioService — dedup">cardioService + dedup<span class="new">NEW</span><span class="risk">3</span></span>
+          <span class="chip" data-phases="3">aiService · extracted<span class="new">NEW</span></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="branch-label">▲ services call the engine · engine returns values ▼</div>
+
+    <!-- Engine as a branch off services, NOT in the data path -->
+    <div class="engine-wrap" data-tip="engine/ is pure computation — deterministic functions called BY services. It receives data as arguments and returns results. It has NO database handle. This is the corrected boundary: the engine never reads or writes the DB.">
+      <div class="engine-head">🧮 engine/ (pure compute) <span class="engine-note">no DB handle</span></div>
+      <div class="engine-grid">
+        <div class="emod p0" data-phases="0,1" data-risk="2" data-tip="workout.js + progression.js — plan generation, deload, titration window, RPE weight ±, substitution-chain walk.">
+          <div class="emh">🏋️ workout.js · progression.js<span class="risk" style="margin-left:auto">2</span></div>
+          <div class="emb">
+            <span class="chip">plan generator</span>
+            <span class="chip">deload · titration</span>
+            <span class="chip" data-phases="1">dose-aware pass<span class="new">NEW</span></span>
+            <span class="chip" data-phases="1">sub-chain walk<span class="new">NEW</span></span>
+          </div>
+        </div>
+        <div class="emod p2" data-phases="2" data-tip="cardio.js — adaptive step-goal algorithm, activity signal, rest-day detection. Consumes already-deduped cardio data handed in by cardioService.">
+          <div class="emh">🏃 cardio.js</div>
+          <div class="emb">
+            <span class="chip">adaptive step goal<span class="new">NEW</span></span>
+            <span class="chip">activity signal<span class="new">NEW</span></span>
+            <span class="chip">rest-day detect<span class="new">NEW</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="flow">
+    <div class="a">⇄</div>
+    <div class="lbl">reads / writes<br>(services only)</div>
+  </div>
+
+  <!-- ── Data ── -->
+  <div class="col col-data">
+    <div class="col-label">Data & External</div>
+
+    <div class="dcard" data-tip="SQLite + WAL stays for v2 — handles this scale far beyond need; Postgres is premature. Exercise library moves from a 333-line in-memory array to an indexed movements table (aliases, glp_flag, sub-chains).">
+      <div class="dch">📂 SQLite · WAL</div>
+      <div class="dcb">
+        users · profiles<br>workouts · checkins<br>macros · measurements<br>chat_messages · photos<br>subscriptions · dose_history<br>
+        <span class="star">movements ★</span><br>
+        <span class="star">cardio_sessions ★</span>
+      </div>
+    </div>
+    <div class="dcard" data-tip="JWT + userId held in the iOS Keychain.">
+      <div class="dch">🔑 iOS Keychain</div>
+      <div class="dcb">JWT · userId</div>
+    </div>
+    <div class="dcard" data-phases="2" data-tip="HealthKit read via HKQueryAnchor — store the anchor, request only the delta on next launch. Reading all-time data causes 2–4s startup lag and trips the rate limiter.">
+      <div class="dch">📱 HealthKit</div>
+      <div class="dcb">steps · distance<br>active energy<br><span class="star">HKQueryAnchor ★</span></div>
+    </div>
+    <div class="dcard" data-phases="3" data-tip="StoreKit 2 entitlements + trial state — the authoritative purchase signal the webhook reconciles into the subscriptions table.">
+      <div class="dch">🏪 StoreKit 2</div>
+      <div class="dcb"><span class="star">entitlements ★</span><br><span class="star">trial state ★</span></div>
+    </div>
+    <div class="dcard" data-phases="3" data-tip="claude-haiku-4-5 for chat-parse + weekly report. The report is the one high-latency path — in Phase 2 consider running it async and pushing via local notification.">
+      <div class="dch">☁️ Anthropic API</div>
+      <div class="dcb">claude-haiku-4-5<br>chat-parse · weekly report</div>
+    </div>
+  </div>
+</div>
+
+<!-- principles -->
+<div class="principles">
+  <div class="pr-title">Production patterns this design bakes in</div>
+  <div class="pr-grid">
+    <div class="pr"><h4>🗄️ Server is source of truth</h4><p>Plan generation, stat aggregation and entitlement checks all run server-side. The client renders the response; one server fix reaches every client.</p></div>
+    <div class="pr"><h4>⚡ Optimistic UI + background sync</h4><p>ViewModels update @Published state immediately, then reconcile on the async result. Start with workout logging — the highest-frequency write.</p></div>
+    <div class="pr"><h4>⚓ Anchor-based HealthKit reads</h4><p>Persist HKQueryAnchor; pull only the delta each launch. Never read all-time data — it stalls startup and trips the rate limiter.</p></div>
+  </div>
+</div>
+
+<!-- risks -->
+<div class="principles">
+  <div class="pr-title">⚠️ The three architectural traps — pinned on the at-risk blocks above</div>
+  <div class="pr-grid">
+    <div class="pr" style="border-color:#fecaca;background:#fef2f2"><h4><span class="rb-inline">1</span> God-object ViewModel</h4><p>TodayViewModel will accrete plan + check-in + macros + steps + rest-day + trial banner. A step-fetch error then crashes the whole tab. Keep concerns split.</p></div>
+    <div class="pr" style="border-color:#fecaca;background:#fef2f2"><h4><span class="rb-inline">2</span> N+1 in the engine</h4><p>progressWorkout() looks up each exercise in a loop. Free with an in-memory array — 18 DB reads where 1 would do once movements are a table. Batch the lookup.</p></div>
+    <div class="pr" style="border-color:#fecaca;background:#fef2f2"><h4><span class="rb-inline">3</span> Cardio double-count</h4><p>A walk logged by HealthKit AND by chat doubles the day's totals and corrupts the step goal. Write the dedup rule as prose at the top of cardioService before coding it.</p></div>
+  </div>
+</div>
+
+<!-- legend -->
+<div class="legend">
+  <span style="font-weight:700;color:var(--faint)">LEGEND:</span>
+  <span class="it"><span class="nb">NEW</span> net-new in v2</span>
+  <span class="it"><span class="star">★</span> new DB table / data source</span>
+  <span class="it"><span class="rb">!</span> numbered architectural trap</span>
+  <span class="it">dashed box = pure compute (no DB)</span>
+</div>
+
+<div id="tip"></div>
+
+<style>.rb-inline{display:inline-flex;width:16px;height:16px;border-radius:50%;background:var(--risk);color:#fff;font-size:9px;font-weight:900;align-items:center;justify-content:center}</style>
+
+<script>
+(function(){
+  var phaseNames={0:"Phase 0 · Hardening",1:"Phase 1 · Movements",2:"Phase 2 · Cardio",3:"Phase 3 · Monetize"};
+  var phaseColors={0:"#94a3b8",1:"#6366f1",2:"#14b8a6",3:"#f59e0b"};
+  var riskText={
+    1:"Trap 1 — God-object ViewModel: keep Today's concerns split so one failed fetch can't take down the tab.",
+    2:"Trap 2 — N+1 queries: batch the exercise lookup once movements live in SQLite.",
+    3:"Trap 3 — HealthKit + manual double-count: specify the dedup rule in prose before implementing."
+  };
+  var state={0:true,1:true,2:true,3:true};
+
+  // ── tooltip ──
+  var tip=document.getElementById('tip');
+  function showTip(el,e){
+    var t=el.getAttribute('data-tip'); if(!t) return;
+    var phs=el.getAttribute('data-phases');
+    var risk=el.getAttribute('data-risk');
+    var head='';
+    if(phs){var f=phs.split(',')[0];head='<span class="tp" style="background:'+phaseColors[f]+'33;color:'+phaseColors[f]+'">'+phaseNames[f].toUpperCase()+'</span>';}
+    var body=t;
+    if(risk){body+='<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.12)"><span class="tr">⚠ '+riskText[risk]+'</span></div>';}
+    tip.innerHTML='<div class="tt">'+(phs?'':'')+head+'</div>'+body;
+    tip.style.opacity='1';
+    moveTip(e);
+  }
+  function moveTip(e){
+    var pad=14,w=tip.offsetWidth,h=tip.offsetHeight;
+    var x=e.clientX+pad, y=e.clientY+pad;
+    if(x+w>window.innerWidth-8)x=e.clientX-w-pad;
+    if(y+h>window.innerHeight-8)y=e.clientY-h-pad;
+    tip.style.left=x+'px';tip.style.top=y+'px';
+  }
+  function hideTip(){tip.style.opacity='0';}
+  document.querySelectorAll('[data-tip]').forEach(function(el){
+    el.addEventListener('mouseenter',function(e){showTip(el,e);});
+    el.addEventListener('mousemove',moveTip);
+    el.addEventListener('mouseleave',hideTip);
+  });
+
+  // ── phase toggling ──
+  function inActivePhase(attr){
+    if(!attr) return true;            // phase-agnostic → always shown
+    return attr.split(',').some(function(p){return state[+p];});
+  }
+  function apply(){
+    document.querySelectorAll('[data-phases]').forEach(function(el){
+      var on=inActivePhase(el.getAttribute('data-phases'));
+      el.classList.toggle('dim',!on);
+    });
+  }
+  document.querySelectorAll('.toggle').forEach(function(tg){
+    tg.addEventListener('click',function(){
+      var p=+tg.getAttribute('data-phase');
+      state[p]=!state[p];
+      tg.setAttribute('data-on',state[p]);
+      apply();
+    });
+  });
+  apply();
+})();
+</script>
+</body>
+</html>

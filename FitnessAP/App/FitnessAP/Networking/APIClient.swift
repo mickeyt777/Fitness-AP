@@ -38,8 +38,12 @@ enum APIError: Error, LocalizedError {
 final class APIClient {
     static let shared = APIClient()
 
-    /// Set this to your test user's UUID to use the dev X-User-Id header.
-    /// AppState.signIn() sets this automatically.
+    /// Production: set by AppState.signIn(userId:sessionToken:) after Apple auth.
+    /// Sent as `Authorization: Bearer <token>` on every request.
+    var sessionToken: String?
+
+    /// Dev mode only: set by AppState.signIn(userId:) in DevLoginView.
+    /// Sent as `X-User-Id` header. Ignored when sessionToken is set.
     var devUserId: String?
 
     private let session: URLSession
@@ -66,9 +70,11 @@ final class APIClient {
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        // Auth header — dev mode only. Production replaces with:
-        //   req.setValue("Bearer \(appleToken)", forHTTPHeaderField: "Authorization")
-        if let uid = asUserId ?? devUserId {
+        // Auth header — prefer the backend session JWT (production), fall back to
+        // the dev X-User-Id header when no session token is present.
+        if let token = sessionToken {
+            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        } else if let uid = asUserId ?? devUserId {
             req.setValue(uid, forHTTPHeaderField: "X-User-Id")
         }
 
@@ -112,6 +118,17 @@ final class APIClient {
         } catch {
             throw APIError.decodingError(error)
         }
+    }
+
+    // MARK: - Auth
+
+    /// Sends an Apple identity token to the backend. Returns a 30-day session JWT.
+    /// Call this once after a successful Sign in with Apple. Store the result in the Keychain.
+    func appleSignIn(identityToken: String, displayName: String?) async throws -> AppleSignInResponse {
+        struct Body: Encodable { let identity_token: String; let display_name: String? }
+        let req = try buildRequest(method: "POST", path: "/auth/apple",
+                                   body: Body(identity_token: identityToken, display_name: displayName))
+        return try await perform(req)
     }
 
     // MARK: - Health
@@ -192,6 +209,33 @@ final class APIClient {
         struct Body: Encodable { let raw_text: String }
         let req = try buildRequest(method: "POST", path: "/ai/chat-parse",
                                    body: Body(raw_text: rawText), asUserId: userId)
+        return try await perform(req)
+    }
+
+    // MARK: - Measurements
+
+    /// Fetches body measurement history. `weeks` controls how far back to look (default 26).
+    /// Pass a large value (e.g. 520) to get all-time data.
+    func getMeasurements(userId: String, weeks: Int = 26) async throws -> [BodyMeasurement] {
+        let req = try buildRequest(method: "GET",
+                                   path: "/measurements/\(userId)?weeks=\(weeks)",
+                                   asUserId: userId)
+        return try await perform(req)
+    }
+
+    /// Logs a new measurement entry (weight and/or body measurements).
+    func logMeasurement(userId: String, body: LogMeasurementBody) async throws -> MeasurementResponse {
+        let req = try buildRequest(method: "POST", path: "/measurements", body: body, asUserId: userId)
+        return try await perform(req)
+    }
+
+    // MARK: - Check-in history
+
+    /// Fetches check-in history. `days` controls how far back to look (default 30).
+    func getCheckins(userId: String, days: Int = 30) async throws -> [CheckIn] {
+        let req = try buildRequest(method: "GET",
+                                   path: "/checkins/\(userId)?days=\(days)",
+                                   asUserId: userId)
         return try await perform(req)
     }
 }

@@ -12,10 +12,16 @@ struct OnboardingView: View {
     private let totalSteps = 3
 
     // Step 1 — About You
+    // unitSystem drives all height/weight display in this step.
+    @State private var unitSystem: UnitSystem = .metric
     @State private var age: Int = 35
     @State private var sex: String = "male"
+    // Height: ground truth always in cm; ft/in state synced when unit changes.
     @State private var heightCm: Double = 170
-    @State private var weightKg: Double = 90
+    @State private var heightFt: Int = 5
+    @State private var heightIn: Int = 7
+    // Weight: ground truth always in kg; display value synced when unit changes.
+    @State private var weightDisplay: Double = 90   // in currently selected units
 
     // Step 2 — Training
     @State private var trainingLevel: String = "beginner"
@@ -25,7 +31,7 @@ struct OnboardingView: View {
     // Step 3 — GLP-1
     @State private var glpDrug: String = "Semaglutide"
     @State private var glpDoseMgText: String = ""
-    @State private var injectionDay: Int = 1          // 0=Sun … 6=Sat
+    @State private var injectionDay: Int = 1
     @State private var glpStartDate: Date = Date()
 
     // Save state
@@ -42,6 +48,9 @@ struct OnboardingView: View {
     ]
 
     private let dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+
+    // MARK: - Computed weight in kg (for storage)
+    private var weightKg: Double { unitSystem.storeWeight(weightDisplay) }
 
     var body: some View {
         NavigationStack {
@@ -71,7 +80,6 @@ struct OnboardingView: View {
 
                 Divider()
 
-                // ── Error ─────────────────────────────────────────────────
                 if let err = saveError {
                     Text(err)
                         .font(.caption)
@@ -99,8 +107,7 @@ struct OnboardingView: View {
                             Task { await save() }
                         } label: {
                             if isSaving {
-                                ProgressView()
-                                    .frame(width: 120)
+                                ProgressView().frame(width: 120)
                             } else {
                                 Text("Save & Get My Plan")
                             }
@@ -116,12 +123,27 @@ struct OnboardingView: View {
         }
     }
 
-    // MARK: - Step views
+    // MARK: - Step 1: About You
 
     private var step1: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Tell us a bit about yourself so we can build the right plan.")
                 .foregroundColor(.secondary)
+
+            // Units — pick this first so height/weight fields respond immediately
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Units", systemImage: "ruler.fill")
+                    .font(.subheadline).bold()
+                Picker("Units", selection: $unitSystem) {
+                    ForEach(UnitSystem.allCases, id: \.self) { us in
+                        Text(us.label).tag(us)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: unitSystem) { _, newSystem in
+                    syncDisplayValues(to: newSystem)
+                }
+            }
 
             // Age
             VStack(alignment: .leading, spacing: 6) {
@@ -142,12 +164,21 @@ struct OnboardingView: View {
                 .pickerStyle(.segmented)
             }
 
-            // Height
+            // Height — metric: single cm stepper / imperial: ft + in steppers
             VStack(alignment: .leading, spacing: 6) {
                 Label("Height", systemImage: "ruler")
                     .font(.subheadline).bold()
-                HStack {
+                if unitSystem == .metric {
                     Stepper("\(Int(heightCm)) cm", value: $heightCm, in: 140...220, step: 1)
+                } else {
+                    HStack(spacing: 24) {
+                        Stepper("\(heightFt) ft", value: $heightFt, in: 4...7)
+                            .fixedSize()
+                            .onChange(of: heightFt) { _, _ in syncHeightCm() }
+                        Stepper("\(heightIn) in", value: $heightIn, in: 0...11)
+                            .fixedSize()
+                            .onChange(of: heightIn) { _, _ in syncHeightCm() }
+                    }
                 }
             }
 
@@ -155,17 +186,23 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 6) {
                 Label("Current weight", systemImage: "scalemass")
                     .font(.subheadline).bold()
-                Stepper(String(format: "%.1f kg", weightKg), value: $weightKg, in: 40...250, step: 0.5)
+                Stepper(
+                    String(format: "%.1f \(unitSystem.weightUnit)", weightDisplay),
+                    value: $weightDisplay,
+                    in: unitSystem.weightRange,
+                    step: unitSystem.weightStep
+                )
             }
         }
     }
+
+    // MARK: - Step 2: Training
 
     private var step2: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("We'll use this to set the right starting weights and volume.")
                 .foregroundColor(.secondary)
 
-            // Training level
             VStack(alignment: .leading, spacing: 6) {
                 Label("Training experience", systemImage: "dumbbell")
                     .font(.subheadline).bold()
@@ -178,7 +215,6 @@ struct OnboardingView: View {
                 trainingLevelHint
             }
 
-            // Days per week
             VStack(alignment: .leading, spacing: 6) {
                 Label("Days per week", systemImage: "calendar")
                     .font(.subheadline).bold()
@@ -188,23 +224,18 @@ struct OnboardingView: View {
                     .foregroundColor(.secondary)
             }
 
-            // Equipment
             VStack(alignment: .leading, spacing: 10) {
                 Label("Equipment available", systemImage: "wrench.and.screwdriver")
                     .font(.subheadline).bold()
                 ForEach(equipmentOptions, id: \.0) { key, label in
                     Button {
-                        if equipment.contains(key) {
-                            equipment.remove(key)
-                        } else {
-                            equipment.insert(key)
-                        }
+                        if equipment.contains(key) { equipment.remove(key) }
+                        else { equipment.insert(key) }
                     } label: {
                         HStack {
                             Image(systemName: equipment.contains(key) ? "checkmark.square.fill" : "square")
                                 .foregroundColor(equipment.contains(key) ? .blue : .secondary)
-                            Text(label)
-                                .foregroundColor(.primary)
+                            Text(label).foregroundColor(.primary)
                             Spacer()
                         }
                     }
@@ -213,12 +244,13 @@ struct OnboardingView: View {
         }
     }
 
+    // MARK: - Step 3: GLP-1
+
     private var step3: some View {
         VStack(alignment: .leading, spacing: 20) {
             Text("Your GLP-1 schedule shapes when we program your hardest sessions.")
                 .foregroundColor(.secondary)
 
-            // Drug
             VStack(alignment: .leading, spacing: 6) {
                 Label("Medication", systemImage: "pills")
                     .font(.subheadline).bold()
@@ -230,7 +262,6 @@ struct OnboardingView: View {
                 .pickerStyle(.menu)
             }
 
-            // Current dose
             VStack(alignment: .leading, spacing: 6) {
                 Label("Current dose (mg)", systemImage: "syringe")
                     .font(.subheadline).bold()
@@ -239,14 +270,11 @@ struct OnboardingView: View {
                     .textFieldStyle(.roundedBorder)
             }
 
-            // Injection day
             VStack(alignment: .leading, spacing: 6) {
                 Label("Injection day", systemImage: "calendar.badge.clock")
                     .font(.subheadline).bold()
                 Picker("Injection day", selection: $injectionDay) {
-                    ForEach(0..<7) { i in
-                        Text(dayNames[i]).tag(i)
-                    }
+                    ForEach(0..<7) { i in Text(dayNames[i]).tag(i) }
                 }
                 .pickerStyle(.menu)
                 Text("We'll schedule your hardest session as far from this day as possible.")
@@ -254,7 +282,6 @@ struct OnboardingView: View {
                     .foregroundColor(.secondary)
             }
 
-            // Start date
             VStack(alignment: .leading, spacing: 6) {
                 Label("When did you start GLP-1?", systemImage: "calendar")
                     .font(.subheadline).bold()
@@ -281,9 +308,27 @@ struct OnboardingView: View {
         case "intermediate": hint = "1–3 years. You know the main lifts."
         default:             hint = "3+ years. Comfortable with advanced programming."
         }
-        return Text(hint)
-            .font(.caption)
-            .foregroundColor(.secondary)
+        return Text(hint).font(.caption).foregroundColor(.secondary)
+    }
+
+    /// Called when the unit system toggle changes. Re-expresses the display
+    /// values in the new units without changing the underlying metric ground truth.
+    private func syncDisplayValues(to newSystem: UnitSystem) {
+        // Weight: re-express current kg ground truth in new units
+        weightDisplay = newSystem.displayWeight(weightKg)
+
+        // Height: re-express current cm in new ft/in values
+        if newSystem == .imperial {
+            let (ft, inches) = UnitSystem.cmToFtIn(heightCm)
+            heightFt = ft
+            heightIn = inches
+        }
+        // (When switching back to metric, heightCm is already the ground truth.)
+    }
+
+    /// Keeps heightCm in sync whenever the imperial ft/in steppers change.
+    private func syncHeightCm() {
+        heightCm = UnitSystem.ftInToCm(feet: heightFt, inches: heightIn)
     }
 
     // MARK: - Save
@@ -294,8 +339,8 @@ struct OnboardingView: View {
 
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyy-MM-dd"
-
-        let doseMgString = glpDoseMgText.trimmingCharacters(in: .whitespaces).isEmpty ? nil : glpDoseMgText
+        let doseMgString = glpDoseMgText.trimmingCharacters(in: .whitespaces).isEmpty
+            ? nil : glpDoseMgText
 
         let body = UpsertProfileBody(
             age: age,
@@ -311,12 +356,16 @@ struct OnboardingView: View {
             glp_current_dose_mg: doseMgString,
             glp_injection_day_of_week: injectionDay,
             glp_start_date: dateFormatter.string(from: glpStartDate),
-            last_dose_change_date: nil
+            last_dose_change_date: nil,
+            unit_system: unitSystem.rawValue
         )
 
         do {
             _ = try await APIClient.shared.upsertProfile(userId: appState.userId, body: body)
-            appState.showingOnboarding = false
+            await MainActor.run {
+                appState.unitSystem = unitSystem
+                appState.showingOnboarding = false
+            }
         } catch {
             saveError = error.localizedDescription
         }
