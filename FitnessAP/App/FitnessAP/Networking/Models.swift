@@ -11,6 +11,15 @@ struct HealthResponse: Decodable {
     let version: String
 }
 
+// MARK: - Auth
+
+/// Returned by POST /auth/apple after the backend verifies the Apple identity token.
+struct AppleSignInResponse: Decodable {
+    let token: String       // 30-day backend session JWT — store in Keychain
+    let userId: String      // Apple subject claim — stable user identifier
+    let is_new_user: Bool?  // true if this is the user's first sign-in → show onboarding
+}
+
 // MARK: - User
 
 struct UserModel: Decodable {
@@ -37,6 +46,7 @@ struct Profile: Decodable {
     let glp_injection_day_of_week: Int?
     let glp_start_date: String?
     let last_dose_change_date: String?
+    let unit_system: String?        // "metric" | "imperial" — display preference only
     let updated_at: String?
 }
 
@@ -148,6 +158,7 @@ struct UpsertProfileBody: Encodable {
     var glp_injection_day_of_week: Int?
     var glp_start_date: String?
     var last_dose_change_date: String?
+    var unit_system: String?        // "metric" | "imperial"
 }
 
 struct SubmitCheckinBody: Encodable {
@@ -210,4 +221,45 @@ struct SendChatBody: Encodable {
     let parsed_payload: ParsedWorkout?
     let parser_source: String?
     let parser_confidence: Double?
+}
+
+// MARK: - Measurements
+// Named BodyMeasurement to avoid conflicting with Foundation's Measurement<UnitType>.
+
+struct BodyMeasurement: Decodable, Identifiable {
+    let id: String
+    let user_id: String
+    let taken_at: String        // "YYYY-MM-DD"
+    let weight_kg: Double?
+    let waist_cm: Double?
+    let hip_cm: Double?
+    let chest_cm: Double?
+    let arm_cm: Double?
+    let thigh_cm: Double?
+    let progress_photo_front_url: String?
+    let progress_photo_side_url: String?
+    let created_at: String?
+}
+
+struct LeanMassProxy: Decodable {
+    let score: String?          // "green" | "yellow" | "hold" | "flag" | nil
+    let summary: String
+    let waist_change_cm: Double?
+    let arm_change_cm: Double?
+    let thigh_change_cm: Double?
+}
+
+struct MeasurementResponse: Decodable {
+    let measurement: BodyMeasurement
+    let lean_mass_proxy: LeanMassProxy
+}
+
+struct LogMeasurementBody: Encodable {
+    var taken_at: String?
+    var weight_kg: Double?
+    var waist_cm: Double?
+    var hip_cm: Double?
+    var chest_cm: Double?
+    var arm_cm: Double?
+    var thigh_cm: Double?
 }

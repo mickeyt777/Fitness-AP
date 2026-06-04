@@ -18,6 +18,7 @@ const { initDb } = require('./db/database');
 const { helmetMiddleware, rateLimiter, aiRateLimiter } = require('./middleware/security');
 
 // API route modules — each file handles one area of the app.
+const authRouter         = require('./routes/auth');
 const usersRouter        = require('./routes/users');
 const profilesRouter     = require('./routes/profiles');
 const workoutsRouter     = require('./routes/workouts');
@@ -61,6 +62,7 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', version: '0.1.0' });
 });
 
+app.use('/auth',         authRouter);   // POST /auth/apple — no auth required
 app.use('/users',        usersRouter);
 app.use('/profiles',     profilesRouter);
 app.use('/workouts',     workoutsRouter);

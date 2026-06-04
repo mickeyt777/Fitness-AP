@@ -21,8 +21,16 @@ struct FitnessAPApp: App {
                             .environmentObject(appState)
                     }
             } else {
+                // Debug builds keep the dev login screen so the X-User-Id
+                // workflow stays intact. Release builds show the real
+                // Sign in with Apple screen.
+                #if DEBUG
                 DevLoginView()
                     .environmentObject(appState)
+                #else
+                SignInView()
+                    .environmentObject(appState)
+                #endif
             }
         }
     }

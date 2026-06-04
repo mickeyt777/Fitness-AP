@@ -63,12 +63,12 @@ router.put('/:userId', requireUser, (req, res, next) => {
         user_id, age, sex, height_cm, starting_weight_kg, current_weight_kg,
         goal_body_fat_pct, training_history_level, equipment_available,
         days_per_week, glp_drug, glp_current_dose_mg, glp_injection_day_of_week,
-        glp_start_date, last_dose_change_date, updated_at
+        glp_start_date, last_dose_change_date, unit_system, updated_at
       ) VALUES (
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?,
         ?, ?, ?, ?,
-        ?, ?, ?
+        ?, ?, ?, ?
       )
       ON CONFLICT(user_id) DO UPDATE SET
         age = excluded.age,
@@ -84,6 +84,7 @@ router.put('/:userId', requireUser, (req, res, next) => {
         glp_injection_day_of_week = excluded.glp_injection_day_of_week,
         glp_start_date = excluded.glp_start_date,
         last_dose_change_date = excluded.last_dose_change_date,
+        unit_system = excluded.unit_system,
         updated_at = excluded.updated_at
     `).run(
       uid,
@@ -101,6 +102,7 @@ router.put('/:userId', requireUser, (req, res, next) => {
       b.glp_injection_day_of_week ?? null,
       b.glp_start_date       ?? null,
       b.last_dose_change_date ?? null,
+      b.unit_system ?? 'metric',
       now
     );
 
