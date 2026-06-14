@@ -3,6 +3,7 @@
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/database');
 const { httpError } = require('../lib/httpError');
+const env = require('../config/env');
 
 // ── S3 / B2 client (lazy-loaded) ──────────────────────────────────────────
 let s3Client   = null;
@@ -20,10 +21,10 @@ function loadS3() {
     getSignedUrl     = gsu;
     s3Client = new S3Client({
       region:      'us-east-1',  // B2 ignores region but SDK requires one
-      endpoint:    process.env.B2_ENDPOINT,
+      endpoint:    env.B2_ENDPOINT,
       credentials: {
-        accessKeyId:     process.env.B2_APPLICATION_KEY_ID,
-        secretAccessKey: process.env.B2_APPLICATION_KEY,
+        accessKeyId:     env.B2_APPLICATION_KEY_ID,
+        secretAccessKey: env.B2_APPLICATION_KEY,
       },
       forcePathStyle: true,  // required for Backblaze B2
     });
@@ -47,13 +48,13 @@ async function uploadToB2(objectKey, buffer, contentType) {
     return { stub: true };
   }
 
-  if (!process.env.B2_APPLICATION_KEY_ID) {
+  if (!env.B2_APPLICATION_KEY_ID) {
     console.log(`[photos] STUB — would upload ${objectKey} (${buffer.length} bytes) to B2`);
     return { stub: true };
   }
 
   await s3Client.send(new PutObjectCommand({
-    Bucket:      process.env.B2_BUCKET_NAME,
+    Bucket:      env.B2_BUCKET_NAME,
     Key:         objectKey,
     Body:        buffer,
     ContentType: contentType,
@@ -69,7 +70,7 @@ async function generatePresignedUrl(objectKey) {
   try {
     return await getSignedUrl(
       s3Client,
-      new GetObjectCommand({ Bucket: process.env.B2_BUCKET_NAME, Key: objectKey }),
+      new GetObjectCommand({ Bucket: env.B2_BUCKET_NAME, Key: objectKey }),
       { expiresIn: 3600 }  // 1 hour
     );
   } catch (_) {
@@ -155,10 +156,10 @@ function deletePhoto(userId, photoId) {
   // Delete from B2 (fire-and-forget — don't block the response)
   if (!photo.is_stub) {
     loadS3();
-    if (s3Client && process.env.B2_BUCKET_NAME) {
+    if (s3Client && env.B2_BUCKET_NAME) {
       const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
       s3Client.send(new DeleteObjectCommand({
-        Bucket: process.env.B2_BUCKET_NAME,
+        Bucket: env.B2_BUCKET_NAME,
         Key:    photo.object_key,
       })).catch(err => {
         console.warn('[photos] B2 delete failed for', photo.object_key, err.message);

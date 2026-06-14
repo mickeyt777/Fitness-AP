@@ -3,6 +3,7 @@
 const jwt = require('jsonwebtoken');
 const { getDb } = require('../db/database');
 const { httpError } = require('../lib/httpError');
+const env = require('../config/env');
 
 // ── Apple JWKS client (same lazy-load pattern as requireUser) ─────────────
 let jwksClient = null;
@@ -32,7 +33,7 @@ async function verifyAppleToken(token) {
     throw new Error('jwks-rsa not installed — run: npm install jwks-rsa');
   }
 
-  const bundleId = process.env.APPLE_BUNDLE_ID;
+  const bundleId = env.APPLE_BUNDLE_ID;
   if (!bundleId) throw new Error('APPLE_BUNDLE_ID not set in .env');
 
   const decoded = jwt.decode(token, { complete: true });
@@ -61,7 +62,7 @@ async function appleSignIn({ identity_token, display_name }) {
     throw httpError(400, 'identity_token is required');
   }
 
-  if (!process.env.JWT_SECRET) {
+  if (!env.JWT_SECRET) {
     throw httpError(500, 'JWT_SECRET not set in .env');
   }
 
@@ -96,7 +97,7 @@ async function appleSignIn({ identity_token, display_name }) {
   // Issue a 30-day backend session JWT.
   const sessionToken = jwt.sign(
     { sub: appleUserId },
-    process.env.JWT_SECRET,
+    env.JWT_SECRET,
     { expiresIn: '30d' }
   );
 

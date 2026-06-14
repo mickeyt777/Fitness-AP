@@ -13,19 +13,20 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 const { httpError } = require('../lib/httpError');
+const env = require('../config/env');
 
 // ── Anthropic client (lazy-initialised) ───────────────────────────────────
 let _anthropic = null;
 function getAnthropic() {
   if (!_anthropic) {
-    _anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    _anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
   }
   return _anthropic;
 }
 
 // ── Cloud LLM wrapper function ─────────────────────────────────────────────
 async function callCloudLlm(systemPrompt, userMessage) {
-  const provider = process.env.CLOUD_LLM_PROVIDER;
+  const provider = env.CLOUD_LLM_PROVIDER;
 
   if (!provider) {
     console.warn('[ai] CLOUD_LLM_PROVIDER not set — returning stub response');

@@ -22,6 +22,7 @@
 'use strict';
 
 const { getDb } = require('../db/database');
+const env = require('../config/env');
 
 // ── Middleware ─────────────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ function requireUser(req, res, next) {
 
   // ── Path 1: Backend session JWT ────────────────────────────────────────────
   if (bearerToken) {
-    const secret = process.env.JWT_SECRET;
+    const secret = env.JWT_SECRET;
     if (!secret) {
       console.error('[requireUser] JWT_SECRET not set in .env');
       return res.status(500).json({ error: 'Server misconfiguration' });
@@ -69,7 +70,7 @@ function requireUser(req, res, next) {
   }
 
   // ── Path 2: Dev header (non-production only) ──────────────────────────────
-  if (process.env.NODE_ENV === 'production') {
+  if (env.isProduction) {
     return res.status(401).json({ error: 'Authorization required' });
   }
 

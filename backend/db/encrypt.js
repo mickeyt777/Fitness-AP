@@ -23,11 +23,12 @@
 'use strict';
 
 const crypto = require('crypto');
+const env = require('../config/env');
 
 const ALGORITHM = 'aes-256-gcm';
 
 function getKey() {
-  const hex = process.env.ENCRYPTION_KEY;
+  const hex = env.ENCRYPTION_KEY;
   if (!hex) {
     // Development convenience — not safe for production.
     return null;
@@ -45,7 +46,7 @@ function encrypt(plaintext) {
 
   const key = getKey();
   if (!key) {
-    if (process.env.NODE_ENV !== 'test') {
+    if (!env.isTest) {
       console.warn('[encrypt] WARNING: ENCRYPTION_KEY not set — storing sensitive data in plaintext');
     }
     return String(plaintext);

@@ -7,7 +7,8 @@
 
 'use strict';
 
-require('dotenv').config();
+// config/env owns dotenv and validates required secrets at boot — load it first.
+const env     = require('./config/env');
 const express = require('express');
 const cors    = require('cors');
 
@@ -90,7 +91,7 @@ app.use((err, _req, res, _next) => {
 
 // ── Start ──────────────────────────────────────────────────────────────────
 
-const PORT = process.env.PORT || 3000;
+const PORT = env.PORT;
 app.listen(PORT, () => {
   console.log(`Fitness AP backend listening on port ${PORT}`);
 });

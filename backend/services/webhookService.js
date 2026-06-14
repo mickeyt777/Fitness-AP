@@ -3,6 +3,7 @@
 const crypto = require('crypto');
 const { getDb } = require('../db/database');
 const { httpError } = require('../lib/httpError');
+const env = require('../config/env');
 
 /**
  * verifyRevenueCatSignature(headers)
@@ -11,7 +12,7 @@ const { httpError } = require('../lib/httpError');
  * Returns true if the request is authentic.
  */
 function verifyRevenueCatSignature(headers) {
-  const secret = process.env.REVENUECAT_WEBHOOK_SECRET;
+  const secret = env.REVENUECAT_WEBHOOK_SECRET;
   if (!secret) {
     // No secret configured — allow in development, warn loudly.
     console.warn('[webhooks] REVENUECAT_WEBHOOK_SECRET not set — skipping signature check (dev mode)');
