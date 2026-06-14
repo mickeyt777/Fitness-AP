@@ -15,6 +15,7 @@
 
 const express = require('express');
 const { requireUser } = require('../middleware/requireUser');
+const { validateDate } = require('../middleware/validate');
 const reportService = require('../services/reportService');
 
 const router = express.Router();
@@ -27,6 +28,8 @@ router.get('/:userId/weekly', requireUser, (req, res, next) => {
 
 // POST /reports/:userId/weekly/narrative
 router.post('/:userId/weekly/narrative', requireUser, (req, res, next) => {
+  const verr = validateDate(req.body?.week_end, 'week_end');
+  if (verr) return res.status(400).json({ error: verr });
   try { res.json(reportService.getWeeklyNarrative(req.params.userId, req.body?.week_end ?? null)); }
   catch (err) { next(err); }
 });

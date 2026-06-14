@@ -14,12 +14,21 @@
 
 const express = require('express');
 const { requireUser } = require('../middleware/requireUser');
+const { firstError, requireFields, validateDate } = require('../middleware/validate');
 const doseHistoryService = require('../services/doseHistoryService');
 
 const router = express.Router();
 
 // POST /dose-history
+// `drug` is required here; its allowed-values check stays in the service
+// (which owns the VALID_DRUGS list). `started_on` defaults server-side, so
+// it's only validated when present.
 router.post('/', requireUser, (req, res, next) => {
+  const verr = firstError(
+    requireFields(req.body, ['drug']),
+    validateDate(req.body?.started_on, 'started_on'),
+  );
+  if (verr) return res.status(400).json({ error: verr });
   try { res.status(201).json(doseHistoryService.recordDose(req.userId, req.body)); }
   catch (err) { next(err); }
 });

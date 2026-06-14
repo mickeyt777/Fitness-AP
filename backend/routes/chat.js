@@ -15,12 +15,15 @@
 
 const express = require('express');
 const { requireUser } = require('../middleware/requireUser');
+const { requireFields } = require('../middleware/validate');
 const chatService = require('../services/chatService');
 
 const router = express.Router();
 
 // POST /chat
 router.post('/', requireUser, (req, res, next) => {
+  const verr = requireFields(req.body, ['raw_text']);
+  if (verr) return res.status(400).json({ error: verr });
   try { res.status(201).json(chatService.postMessage(req.userId, req.body)); }
   catch (err) { next(err); }
 });

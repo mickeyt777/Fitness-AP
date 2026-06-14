@@ -15,12 +15,15 @@
 'use strict';
 
 const express = require('express');
+const { requireFields } = require('../middleware/validate');
 const authService = require('../services/authService');
 
 const router = express.Router();
 
 // POST /auth/apple
 router.post('/apple', async (req, res, next) => {
+  const verr = requireFields(req.body, ['identity_token']);
+  if (verr) return res.status(400).json({ error: verr });
   try {
     const { status, body } = await authService.appleSignIn(req.body);
     res.status(status).json(body);

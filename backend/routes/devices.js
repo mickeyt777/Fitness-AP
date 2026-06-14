@@ -13,12 +13,15 @@
 
 const express = require('express');
 const { requireUser } = require('../middleware/requireUser');
+const { requireFields } = require('../middleware/validate');
 const deviceService = require('../services/deviceService');
 
 const router = express.Router();
 
 // POST /devices
 router.post('/', requireUser, (req, res, next) => {
+  const verr = requireFields(req.body, ['token']);
+  if (verr) return res.status(400).json({ error: verr });
   try { res.status(201).json(deviceService.registerDevice(req.userId, req.body)); }
   catch (err) { next(err); }
 });

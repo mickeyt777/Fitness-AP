@@ -18,18 +18,23 @@
 
 const express = require('express');
 const { requireUser } = require('../middleware/requireUser');
+const { requireFields } = require('../middleware/validate');
 const aiService = require('../services/aiService');
 
 const router = express.Router();
 
 // POST /ai/chat-parse
 router.post('/chat-parse', requireUser, async (req, res, next) => {
+  const verr = requireFields(req.body, ['raw_text']);
+  if (verr) return res.status(400).json({ error: verr });
   try { res.json(await aiService.chatParse(req.body.raw_text)); }
   catch (err) { next(err); }
 });
 
 // POST /ai/weekly-report
 router.post('/weekly-report', requireUser, async (req, res, next) => {
+  const verr = requireFields(req.body, ['summary_data']);
+  if (verr) return res.status(400).json({ error: verr });
   try { res.json(await aiService.weeklyReport(req.body.summary_data)); }
   catch (err) { next(err); }
 });
