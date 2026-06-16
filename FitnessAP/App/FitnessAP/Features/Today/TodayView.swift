@@ -15,12 +15,15 @@ struct TodayView: View {
         NavigationStack {
             Group {
                 if isLoading {
-                    ProgressView("Loading your plan…")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    LoadingStateView(message: "Loading your plan…")
                 } else if let error = errorMessage {
-                    errorView(error)
+                    ErrorStateView(message: error) { Task { await loadPlan() } }
                 } else if sessions.isEmpty {
-                    emptyView
+                    EmptyStateView(
+                        systemImage: "figure.strengthtraining.traditional",
+                        title: "No plan yet",
+                        message: "Your workout plan will appear here once it's generated."
+                    )
                 } else {
                     planList
                 }
@@ -64,44 +67,6 @@ struct TodayView: View {
             .padding(.vertical, 4)
         }
         .contentMargins(.bottom, 110, for: .scrollContent)
-    }
-
-    private func errorView(_ message: String) -> some View {
-        VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.largeTitle)
-                .foregroundColor(.orange)
-            Text(message)
-                .multilineTextAlignment(.center)
-                .foregroundColor(.secondary)
-                .padding(.horizontal)
-            Button("Try again") {
-                Task { await loadPlan() }
-            }
-            .buttonStyle(.borderedProminent)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var emptyView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "calendar.badge.exclamationmark")
-                .font(.largeTitle)
-                .foregroundColor(.secondary)
-            Text("No workout plan yet")
-                .font(.headline)
-            Text("Complete your profile so the engine can build your personalised plan.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
-            Button("Set up my profile") {
-                appState.showingOnboarding = true
-            }
-            .buttonStyle(.borderedProminent)
-            .padding(.top, 4)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     // MARK: - Data loading
