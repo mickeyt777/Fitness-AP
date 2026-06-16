@@ -35,6 +35,7 @@
 'use strict';
 
 const { getDb } = require('../db/database');
+const env = require('../config/env');
 
 const ALLOWED_STATUSES = new Set(['active', 'trialing']);
 
@@ -44,7 +45,7 @@ const ALLOWED_STATUSES = new Set(['active', 'trialing']);
  */
 function requireSubscription(req, res, next) {
   // Dev bypass — never in production.
-  if (process.env.SKIP_SUBSCRIPTION_CHECK === 'true') {
+  if (env.SKIP_SUBSCRIPTION_CHECK) {
     return next();
   }
 

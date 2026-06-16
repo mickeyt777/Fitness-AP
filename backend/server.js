@@ -7,7 +7,8 @@
 
 'use strict';
 
-require('dotenv').config();
+// config/env owns dotenv and validates required secrets at boot — load it first.
+const env     = require('./config/env');
 const express = require('express');
 const cors    = require('cors');
 
@@ -18,6 +19,7 @@ const { initDb } = require('./db/database');
 const { helmetMiddleware, rateLimiter, aiRateLimiter } = require('./middleware/security');
 
 // API route modules — each file handles one area of the app.
+const authRouter         = require('./routes/auth');
 const usersRouter        = require('./routes/users');
 const profilesRouter     = require('./routes/profiles');
 const workoutsRouter     = require('./routes/workouts');
@@ -61,6 +63,7 @@ app.get('/health', (_req, res) => {
   res.json({ status: 'ok', version: '0.1.0' });
 });
 
+app.use('/auth',         authRouter);   // POST /auth/apple — no auth required
 app.use('/users',        usersRouter);
 app.use('/profiles',     profilesRouter);
 app.use('/workouts',     workoutsRouter);
@@ -88,7 +91,7 @@ app.use((err, _req, res, _next) => {
 
 // ── Start ──────────────────────────────────────────────────────────────────
 
-const PORT = process.env.PORT || 3000;
+const PORT = env.PORT;
 app.listen(PORT, () => {
   console.log(`Fitness AP backend listening on port ${PORT}`);
 });

@@ -14,6 +14,7 @@
 const path = require('path');
 const fs   = require('fs');
 const Database = require('better-sqlite3');
+const env = require('../config/env');
 
 let db; // module-level singleton — one connection shared across the whole process
 
@@ -23,7 +24,7 @@ let db; // module-level singleton — one connection shared across the whole pro
  * and runs any migration files that haven't been applied yet.
  */
 function initDb() {
-  const dbPath = process.env.DB_PATH || './data/fitnessap.db';
+  const dbPath = env.DB_PATH;
 
   // Make sure the directory exists before trying to create the file.
   const dir = path.dirname(dbPath);

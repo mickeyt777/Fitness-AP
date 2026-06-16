@@ -23,7 +23,7 @@
 
 'use strict';
 
-require('dotenv').config();
+const env = require('./config/env');
 const cron = require('node-cron');
 const { initDb, getDb } = require('./db/database');
 
@@ -48,23 +48,23 @@ console.log('[worker] started');
  *   const apn = require('@parse/node-apn');
  *   const provider = new apn.Provider({
  *     token: {
- *       key:     process.env.APNS_KEY_PATH,   // path to your .p8 file
- *       keyId:   process.env.APNS_KEY_ID,
- *       teamId:  process.env.APNS_TEAM_ID,
+ *       key:     env.APNS_KEY_PATH,   // path to your .p8 file
+ *       keyId:   env.APNS_KEY_ID,
+ *       teamId:  env.APNS_TEAM_ID,
  *     },
- *     production: process.env.NODE_ENV === 'production',
+ *     production: env.isProduction,
  *   });
  *   const note = new apn.Notification();
  *   note.expiry  = Math.floor(Date.now() / 1000) + 3600;
  *   note.badge   = 1;
  *   note.sound   = 'default';
  *   note.alert   = { title, body };
- *   note.topic   = process.env.APNS_BUNDLE_ID;
+ *   note.topic   = env.APNS_BUNDLE_ID;
  *   note.payload = data ?? {};
  *   await provider.send(note, deviceToken);
  */
 async function sendPush(deviceToken, title, body, data = {}) {
-  const hasCredentials = process.env.APNS_KEY_PATH && process.env.APNS_KEY_ID;
+  const hasCredentials = env.APNS_KEY_PATH && env.APNS_KEY_ID;
 
   if (!hasCredentials) {
     console.log(`[push] STUB — would send to ${deviceToken.slice(0, 8)}...: "${title}" / "${body}"`);

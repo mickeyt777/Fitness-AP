@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, Arial, sans-serif; background: var(--background, #fff); color: var(--text, #1a1a1a); padding: 20px; font-size: 13px; }
+
+  h2.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+  .arch { display: flex; gap: 20px; align-items: flex-start; }
+
+  /* ── Column labels ── */
+  .col-wrap { display: flex; flex-direction: column; gap: 0; }
+  .col-label { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #888; margin-bottom: 8px; text-align: center; }
+
+  /* ── Columns ── */
+  .col-ios    { width: 220px; }
+  .col-api    { width: 200px; }
+  .col-engine { width: 160px; }
+  .col-data   { width: 160px; }
+
+  /* ── Arrows between columns ── */
+  .arrow-wrap { display: flex; flex-direction: column; justify-content: center; align-items: center; padding-top: 28px; gap: 4px; }
+  .arrow { font-size: 18px; color: #bbb; line-height: 1; }
+  .arrow-label { font-size: 9px; color: #aaa; text-align: center; max-width: 40px; }
+
+  /* ── Phase banners ── */
+  .phase-banner {
+    border-radius: 6px 6px 0 0;
+    padding: 4px 10px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .phase-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Layer cards ── */
+  .layer {
+    border-radius: 8px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    border: 1.5px solid #e8e8e8;
+  }
+  .layer-header {
+    padding: 7px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .layer-body { padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; background: #fff; }
+
+  /* ── Chips ── */
+  .chip {
+    border-radius: 5px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid transparent;
+    cursor: default;
+    transition: opacity .15s;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .chip:hover { opacity: .75; }
+  .chip-new::after { content: 'NEW'; font-size: 8px; font-weight: 800; letter-spacing: .06em; background: #16a34a; color: #fff; border-radius: 3px; padding: 1px 4px; margin-left: 2px; }
+
+  /* ── Color themes by phase ── */
+
+  /* Phase 0 — structural hardening — slate */
+  .p0 .phase-banner { background: #f1f5f9; color: #475569; }
+  .p0 .phase-dot    { background: #94a3b8; }
+  .p0 .layer        { border-color: #e2e8f0; }
+  .p0 .layer-header { background: #f8fafc; color: #334155; }
+  .p0 .chip         { background: #f1f5f9; color: #475569; border-color: #e2e8f0; }
+
+  /* Phase 1 — movements — indigo */
+  .p1 .phase-banner { background: #eef2ff; color: #3730a3; }
+  .p1 .phase-dot    { background: #6366f1; }
+  .p1 .layer        { border-color: #e0e7ff; }
+  .p1 .layer-header { background: #eef2ff; color: #3730a3; }
+  .p1 .chip         { background: #f5f3ff; color: #4f46e5; border-color: #e0e7ff; }
+
+  /* Phase 2 — cardio — teal */
+  .p2 .phase-banner { background: #f0fdfa; color: #0f766e; }
+  .p2 .phase-dot    { background: #14b8a6; }
+  .p2 .layer        { border-color: #ccfbf1; }
+  .p2 .layer-header { background: #f0fdfa; color: #0f766e; }
+  .p2 .chip         { background: #f0fdfa; color: #0f766e; border-color: #ccfbf1; }
+
+  /* Phase 3 — monetization — amber */
+  .p3 .phase-banner { background: #fffbeb; color: #92400e; }
+  .p3 .phase-dot    { background: #f59e0b; }
+  .p3 .layer        { border-color: #fde68a; }
+  .p3 .layer-header { background: #fffbeb; color: #92400e; }
+  .p3 .chip         { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+
+  /* mixed layer (spans phases) */
+  .pm .layer        { border-color: #e8e8e8; }
+  .pm .layer-header { background: #f9fafb; color: #374151; }
+  .pm .chip         { background: #f9fafb; color: #374151; border-color: #e8e8e8; }
+
+  /* ── Legend ── */
+  .legend { margin-top: 16px; display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: #666; }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+  /* ── Data column specifics ── */
+  .db-card {
+    border: 1.5px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .db-card-header {
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    color: #334155;
+  }
+  .db-card-body { padding: 6px 10px; font-size: 11px; color: #64748b; background: #fff; line-height: 1.6; }
+  .db-new { color: #16a34a; font-weight: 700; }
+</style>
+</head>
+<body>
+<h2 class="sr-only">Fitness GLP v2 architecture diagram showing iOS app, backend API, engine, and data layers across four build phases</h2>
+
+<div class="arch">
+
+  <!-- ── iOS Column ── -->
+  <div class="col-wrap col-ios">
+    <div class="col-label">iOS App (SwiftUI)</div>
+
+    <!-- P0 -->
+    <div class="p0">
+      <div class="layer">
+        <div class="layer-header">⚙️ App Core</div>
+        <div class="layer-body">
+          <div class="chip">AppState.swift</div>
+          <div class="chip">KeychainManager</div>
+          <div class="chip chip-new">Config.swift</div>
+          <div class="chip">APIClient.swift</div>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-header">📦 Models/</div>
+        <div class="layer-body">
+          <div class="chip">AuthModels</div>
+          <div class="chip">WorkoutModels</div>
+          <div class="chip">CheckinModels</div>
+          <div class="chip chip-new">CardioModels</div>
+          <div class="chip chip-new">StoreModels</div>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-header">🧩 Shared/Components</div>
+        <div class="layer-body">
+          <div class="chip chip-new">LoadingView</div>
+          <div class="chip chip-new">EmptyStateView</div>
+          <div class="chip chip-new">ErrorStateView</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- P2 -->
+    <div class="p2">
+      <div class="layer">
+        <div class="layer-header">📍 Services/</div>
+        <div class="layer-body">
+          <div class="chip chip-new">HealthKitService</div>
+          <div class="chip chip-new">StoreKitService</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Features -->
+    <div class="pm">
+      <div class="layer">
+        <div class="layer-header">📱 Features/</div>
+        <div class="layer-body">
+          <div class="chip">Today + ViewModel</div>
+          <div class="chip">Workout</div>
+          <div class="chip">Progress</div>
+          <div class="chip">Onboarding</div>
+          <div class="chip chip-new">Paywall</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- arrow -->
+  <div class="arrow-wrap">
+    <div class="arrow">⇄</div>
+    <div class="arrow-label">JWT / Bearer</div>
+  </div>
+
+  <!-- ── API Column ── -->
+  <div class="col-wrap col-api">
+    <div class="col-label">Backend (Node / Express)</div>
+
+    <div class="p0">
+      <div class="layer">
+        <div class="layer-header">🛡️ Middleware</div>
+        <div class="layer-body">
+          <div class="chip">requireUser</div>
+          <div class="chip">requireSubscription</div>
+          <div class="chip">validate (all routes)</div>
+          <div class="chip">security / rate limit</div>
+        </div>
+      </div>
+      <div class="layer">
+        <div class="layer-header">🔀 Routes/ (thin)</div>
+        <div class="layer-body">
+          <div class="chip">auth · users · profiles</div>
+          <div class="chip">workouts · checkins</div>
+          <div class="chip">macros · measurements</div>
+          <div class="chip chip-new">cardio</div>
+          <div class="chip chip-new">webhooks (StoreKit)</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pm">
+      <div class="layer">
+        <div class="layer-header">⚙️ Services/ (business logic)</div>
+        <div class="layer-body">
+          <div class="chip chip-new">workoutService</div>
+          <div class="chip chip-new">checkinService</div>
+          <div class="chip chip-new">movementService</div>
+          <div class="chip chip-new">cardioService + dedup</div>
+          <div class="chip chip-new">aiService</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- arrow -->
+  <div class="arrow-wrap">
+    <div class="arrow">→</div>
+    <div class="arrow-label">calls</div>
+  </div>
+
+  <!-- ── Engine Column ── -->
+  <div class="col-wrap col-engine">
+    <div class="col-label">Engine</div>
+
+    <div class="pm">
+      <div class="layer">
+        <div class="layer-header">🏋️ workout.js</div>
+        <div class="layer-body">
+          <div class="chip">plan generator</div>
+          <div class="chip">deload logic</div>
+          <div class="chip">titration window</div>
+          <div class="chip chip-new">dose-aware pass</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p1">
+      <div class="layer">
+        <div class="layer-header">📚 progression.js</div>
+        <div class="layer-body">
+          <div class="chip">RPE-based weight ±</div>
+          <div class="chip chip-new">sub chain walk</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p2">
+      <div class="layer">
+        <div class="layer-header">🏃 cardio.js</div>
+        <div class="layer-body">
+          <div class="chip chip-new">adaptive step goal</div>
+          <div class="chip chip-new">activity signal</div>
+          <div class="chip chip-new">rest-day detect</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="p3">
+      <div class="layer">
+        <div class="layer-header">🤖 aiService.js</div>
+        <div class="layer-body">
+          <div class="chip">chat-parse (Haiku)</div>
+          <div class="chip chip-new">weekly report +</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- arrow -->
+  <div class="arrow-wrap">
+    <div class="arrow">⇄</div>
+    <div class="arrow-label">reads / writes</div>
+  </div>
+
+  <!-- ── Data Column ── -->
+  <div class="col-wrap col-data">
+    <div class="col-label">Data Layer</div>
+
+    <div class="db-card">
+      <div class="db-card-header">📂 SQLite (WAL)</div>
+      <div class="db-card-body">
+        users<br>
+        profiles<br>
+        workouts<br>
+        checkins<br>
+        macros<br>
+        measurements<br>
+        chat_messages<br>
+        subscriptions<br>
+        dose_history<br>
+        photos<br>
+        <span class="db-new">movements ★</span><br>
+        <span class="db-new">cardio_sessions ★</span>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-card-header">🔑 iOS Keychain</div>
+      <div class="db-card-body">JWT · userId</div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-card-header">📱 HealthKit</div>
+      <div class="db-card-body">
+        steps · distance<br>
+        active energy<br>
+        <span class="db-new">HKQueryAnchor ★</span>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-card-header">🏪 StoreKit 2</div>
+      <div class="db-card-body">
+        <span class="db-new">entitlements ★</span><br>
+        <span class="db-new">trial state ★</span>
+      </div>
+    </div>
+
+    <div class="db-card">
+      <div class="db-card-header">☁️ Anthropic API</div>
+      <div class="db-card-body">claude-haiku-4-5<br>chat-parse · report</div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <span style="font-size:10px;color:#888;font-weight:600;">PHASES:</span>
+  <div class="legend-item"><div class="legend-dot" style="background:#94a3b8"></div> Phase 0 — Structural hardening</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6366f1"></div> Phase 1 — Movements</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#14b8a6"></div> Phase 2 — Cardio / steps</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Phase 3 — Monetization</div>
+  <div class="legend-item" style="margin-left:8px;"><span style="background:#16a34a;color:#fff;font-size:9px;font-weight:800;border-radius:3px;padding:1px 4px;">NEW</span> = net-new in v2</div>
+  <div class="legend-item"><span class="db-new">★</span> = new DB table / source</div>
+</div>
+
+</body>
+</html>
