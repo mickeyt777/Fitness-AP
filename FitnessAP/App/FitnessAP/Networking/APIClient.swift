@@ -7,10 +7,6 @@
 
 import Foundation
 
-// MARK: - Base URL
-// Change this to your VPS address when going live: "https://api.fitnessap.com"
-private let kBaseURL = "http://localhost:3000"
-
 // MARK: - Errors
 
 enum APIError: Error, LocalizedError {
@@ -22,7 +18,7 @@ enum APIError: Error, LocalizedError {
     var errorDescription: String? {
         switch self {
         case .badURL:
-            return "Invalid URL — check kBaseURL in APIClient.swift"
+            return "Invalid URL — check Config.baseURL"
         case .networkError(let e):
             return "Network error: \(e.localizedDescription)"
         case .httpError(let code, let body):
@@ -63,7 +59,7 @@ final class APIClient {
         body: (any Encodable)? = nil,
         asUserId: String? = nil
     ) throws -> URLRequest {
-        guard let url = URL(string: kBaseURL + path) else {
+        guard let url = URL(string: Config.baseURL + path) else {
             throw APIError.badURL
         }
         var req = URLRequest(url: url)
