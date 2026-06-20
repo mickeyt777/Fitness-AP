@@ -246,4 +246,50 @@ final class APIClient {
                                    asUserId: userId)
         return try await perform(req)
     }
+
+    // MARK: - Activity (P2-C: steps / cardio / HealthKit)
+
+    /// The Today-ring + Progress-sparkline surface payload. `days` controls how far
+    /// back the daily/cardio arrays reach (default 14).
+    func getActivitySummary(userId: String, days: Int = 14) async throws -> ActivitySummary {
+        let req = try buildRequest(method: "GET",
+                                   path: "/activity/\(userId)/summary?days=\(days)",
+                                   asUserId: userId)
+        return try await perform(req)
+    }
+
+    /// Recent cardio bouts. Superseded (HealthKit-deduped) rows are hidden by default.
+    func getCardioSessions(userId: String, days: Int = 30,
+                           includeSuperseded: Bool = false) async throws -> [CardioSession] {
+        let req = try buildRequest(
+            method: "GET",
+            path: "/activity/\(userId)/cardio?days=\(days)&include_superseded=\(includeSuperseded)",
+            asUserId: userId)
+        return try await perform(req)
+    }
+
+    /// Idempotent HealthKit batch. Re-sending the same hk_uuid updates, never duplicates.
+    func syncHealthKitWorkouts(userId: String,
+                               workouts: [HealthKitWorkout]) async throws -> HealthKitSyncResult {
+        let req = try buildRequest(method: "POST", path: "/activity/healthkit/sync",
+                                   body: SyncHealthKitBody(workouts: workouts), asUserId: userId)
+        return try await perform(req)
+    }
+
+    /// Upserts a day's rollup. Partial-update friendly; returns the row incl. computed step_goal.
+    func upsertDailyActivity(userId: String,
+                             body: UpsertDailyActivityBody) async throws -> DailyActivity {
+        let req = try buildRequest(method: "POST", path: "/activity/daily",
+                                   body: body, asUserId: userId)
+        return try await perform(req)
+    }
+
+    /// Logs one manual cardio bout. A bout that overlaps an existing HK bout is
+    /// immediately superseded server-side (HealthKit wins).
+    func logCardioSession(userId: String,
+                          body: LogCardioSessionBody) async throws -> CardioSession {
+        let req = try buildRequest(method: "POST", path: "/activity/cardio",
+                                   body: body, asUserId: userId)
+        return try await perform(req)
+    }
 }
