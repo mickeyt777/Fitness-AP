@@ -20,7 +20,7 @@
 'use strict';
 
 const { v4: uuidv4 } = require('uuid');
-const { getByPattern, pickExercise, getCurrentWeekNumber, getExercise } = require('./exercises');
+const { getByPattern, pickExercise, getCurrentWeekNumber, getExercise, getEasierVariant } = require('./exercises');
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -180,13 +180,23 @@ function buildSession(type, profile, options = {}) {
     ];
   }
 
-  // ── Deload: reduced sets/load of the main lifts ──────────────────────────
+  // ── Deload: step each main lift DOWN one level, then cut sets/load ───────
+  // Rather than only trimming volume, a deload now walks the substitution chain
+  // to an easier variant of the user's normal movement (e.g. DB front squat →
+  // goblet squat), then still reduces sets and RPE. We pick at the user's real
+  // tier first (not the tier-1 cap) so there's a level to step down FROM; when
+  // no easier variant exists, the picked movement is kept as-is.
   if (type === 'deload') {
+    const deloadPick = (pattern) => {
+      const picked = pickExercise(pattern, maxTier, equip, sessionVariant, weekNumber);
+      if (!picked) return null;
+      return getEasierVariant(picked.id, equip) || picked;
+    };
     return [
-      rx(pick('squat'),  2, 10, 6.0),
-      rx(pick('hinge'),  2, 10, 6.0),
-      rx(pick('push_h'), 2, 12, 6.0),
-      rx(pick('pull_h'), 2, 12, 6.0),
+      rx(deloadPick('squat'),  2, 10, 6.0),
+      rx(deloadPick('hinge'),  2, 10, 6.0),
+      rx(deloadPick('push_h'), 2, 12, 6.0),
+      rx(deloadPick('pull_h'), 2, 12, 6.0),
     ].filter(Boolean);
   }
 

@@ -24,6 +24,41 @@ const { getDb } = require('../db/database');
 const { httpError } = require('../lib/httpError');
 
 // ---------------------------------------------------------------------------
+// Equipment + level vocab
+// ---------------------------------------------------------------------------
+
+// The movements table uses SINGULAR equipment slugs; the live engine and stored
+// profiles use PLURALS for some. This map translates the engine/profile vocab
+// onto the table's slugs. Slugs already singular (bodyweight/barbell/machine)
+// map to themselves. This is the one place that translation lives (P1-C).
+const EQUIPMENT_PLURAL_TO_SINGULAR = {
+  dumbbells:   'dumbbell',
+  cables:      'cable',
+  kettlebells: 'kettlebell',
+  bands:       'band',
+  // pass-throughs (already singular in both vocabularies)
+  bodyweight:  'bodyweight',
+  barbell:     'barbell',
+  machine:     'machine',
+  dumbbell:    'dumbbell',
+  cable:       'cable',
+  kettlebell:  'kettlebell',
+  band:        'band',
+};
+
+/** Translate one engine/profile equipment slug to the table's singular slug. */
+function toSingularEquipment(slug) {
+  if (typeof slug !== 'string') return null;
+  return EQUIPMENT_PLURAL_TO_SINGULAR[slug.toLowerCase()] || slug.toLowerCase();
+}
+
+/** Numeric ordering for the level enum (used for <= "max level" filtering). */
+const LEVEL_RANK = { beginner: 1, intermediate: 2, advanced: 3 };
+function levelRank(level) {
+  return LEVEL_RANK[level] || 1;
+}
+
+// ---------------------------------------------------------------------------
 // Mapper
 // ---------------------------------------------------------------------------
 
@@ -139,6 +174,51 @@ function getMovementsByEquipment(equipment) {
 }
 
 /**
+ * getMovementsByPattern(pattern, opts?) → array (possibly empty).
+ *
+ * This is the key the workout engine selects on (push_h, squat, hinge, …).
+ * opts.maxLevel     — include movements at this level OR EASIER (the engine
+ *                     treats level like a ceiling, mirroring the old numeric
+ *                     tier). e.g. maxLevel='intermediate' returns beginner +
+ *                     intermediate.
+ * opts.equipment    — string or array of owned equipment (plural or singular);
+ *                     restricts to movements performable with that equipment.
+ * opts.compoundOnly — when true, only is_compound=1 movements. The engine's
+ *                     main-lift slots want compounds (isolation work like
+ *                     lateral raises / calf raises shares a pattern but isn't a
+ *                     main lift), so the engine adapter passes this true.
+ * Ordered by level (easiest first) then name for deterministic rotation.
+ */
+function getMovementsByPattern(pattern, opts = {}) {
+  const db      = getDb();
+  const clauses = ['pattern = ?'];
+  const params  = [pattern];
+
+  if (opts.maxLevel) {
+    clauses.push(`(CASE level WHEN 'beginner' THEN 1 WHEN 'intermediate' THEN 2 ELSE 3 END) <= ?`);
+    params.push(levelRank(opts.maxLevel));
+  }
+  if (opts.compoundOnly) {
+    clauses.push('is_compound = 1');
+  }
+  const equipment = normalizeEquipmentList(opts.equipment);
+  if (equipment.length) {
+    clauses.push(`equipment IN (${equipment.map(() => '?').join(', ')})`);
+    params.push(...equipment);
+  }
+
+  const rows = db.prepare(`
+    SELECT * FROM movements
+    WHERE ${clauses.join(' AND ')}
+    ORDER BY
+      CASE level WHEN 'beginner' THEN 0 WHEN 'intermediate' THEN 1 ELSE 2 END,
+      name
+  `).all(...params);
+
+  return rows.map(rowToMovement);
+}
+
+/**
  * searchByAlias(q) → single best-match movement, or null.
  *
  * For AI/spoken-name resolution we want ONE canonical movement, not a list, so
@@ -189,41 +269,90 @@ function searchByAlias(q) {
 }
 
 /**
- * getSubstitutes(id, opts?) → array of substitute movements.
+ * getSubstitutes(id, opts?) → ranked array of substitute movements (P1-C).
  *
- * STUB for P1-B. Full substitution logic (deload steps, equipment swaps,
- * pattern-equivalent picks) is authored in P1-C once the base library is
- * locked. For now we surface only the trivially-available progression chain
- * neighbours stored on the row (progresses_to / regresses_to), so callers have
- * something real to test against without committing to chain semantics.
+ * Two layered strategies, most-relevant first:
+ *   1. Progression-chain walk (multi-hop) along regresses_to / progresses_to —
+ *      these are the authored, hand-vetted substitutes, so they rank first and
+ *      in chain order (closest variant first).
+ *   2. Level-appropriate same-pattern fallback — other movements sharing the
+ *      base movement's `pattern`, in the requested direction, filtered to owned
+ *      equipment. Fills gaps where the chain is sparse (chains are only
+ *      partially authored). Ordered by closeness in level, then name.
  *
- * opts.direction — 'harder' | 'easier' | 'both' (default 'both').
+ * opts.direction — 'easier' | 'harder' | 'both' (default 'both').
+ *   'easier'  → regression chain + lower-level same-pattern movements.
+ *   'harder'  → progression chain + higher-level same-pattern movements.
+ *   'both'    → easier first, then harder.
+ * opts.equipment    — owned equipment (string|array, plural or singular). When
+ *                     given, every returned substitute must be performable with
+ *                     it (this is the equipment-swap path).
+ * opts.compoundOnly — restrict same-pattern fallback to compounds (default
+ *                     false; chain neighbours are always included regardless).
  *
- * TODO(P1-C): replace this neighbour walk with proper substitution selection
- * (same pattern, owned equipment, level-appropriate; multi-hop chain walk for
- * deload). Throws 404 if the base movement id is unknown.
+ * Returns [] when nothing qualifies. Throws 404 if the base id is unknown.
  */
 function getSubstitutes(id, opts = {}) {
-  const movement  = getMovementById(id); // 404s on unknown id
+  const base      = getMovementById(id); // 404s on unknown id
   const direction = opts.direction || 'both';
+  const equipment = normalizeEquipmentList(opts.equipment);
+  const db        = getDb();
 
-  const ids = [];
-  if ((direction === 'harder' || direction === 'both') && movement.progresses_to) {
-    ids.push(movement.progresses_to);
+  const okEquipment = (m) => !equipment.length || equipment.includes(m.equipment);
+
+  // --- 1. Walk an authored chain (multi-hop), collecting ids in order. -------
+  const walkChain = (field) => {
+    const ids = [];
+    const seen = new Set([base.id]);
+    let cursor = base[field];
+    while (cursor && !seen.has(cursor)) {
+      seen.add(cursor);
+      const row = db.prepare('SELECT * FROM movements WHERE id = ?').get(cursor);
+      if (!row) break;
+      const m = rowToMovement(row);
+      ids.push(m);
+      cursor = m[field];
+    }
+    return ids;
+  };
+
+  // --- 2. Same-pattern, level-appropriate fallback in a direction. -----------
+  const samePatternFallback = (dir) => {
+    if (!base.pattern) return [];
+    const baseRank = levelRank(base.level);
+    const all = getMovementsByPattern(base.pattern, {
+      compoundOnly: opts.compoundOnly || false,
+    });
+    return all
+      .filter(m => m.id !== base.id)
+      .filter(m => dir === 'easier'
+        ? levelRank(m.level) <= baseRank
+        : levelRank(m.level) >= baseRank)
+      // closeness: smallest level gap to the base first, then name
+      .sort((a, b) =>
+        Math.abs(levelRank(a.level) - baseRank) - Math.abs(levelRank(b.level) - baseRank)
+        || a.name.localeCompare(b.name));
+  };
+
+  const collect = (dir) => [
+    ...walkChain(dir === 'easier' ? 'regresses_to' : 'progresses_to'),
+    ...samePatternFallback(dir),
+  ];
+
+  let candidates = [];
+  if (direction === 'easier' || direction === 'both') candidates.push(...collect('easier'));
+  if (direction === 'harder' || direction === 'both') candidates.push(...collect('harder'));
+
+  // De-dupe (preserve first/most-relevant occurrence), drop base, apply equipment.
+  const seen = new Set([base.id]);
+  const out  = [];
+  for (const m of candidates) {
+    if (seen.has(m.id)) continue;
+    seen.add(m.id);
+    if (!okEquipment(m)) continue;
+    out.push(m);
   }
-  if ((direction === 'easier' || direction === 'both') && movement.regresses_to) {
-    ids.push(movement.regresses_to);
-  }
-  if (!ids.length) return [];
-
-  const db   = getDb();
-  const rows = db.prepare(
-    `SELECT * FROM movements WHERE id IN (${ids.map(() => '?').join(', ')})`
-  ).all(...ids);
-
-  // Preserve harder-then-easier ordering rather than DB order.
-  const byId = new Map(rows.map(r => [r.id, r]));
-  return ids.map(i => rowToMovement(byId.get(i))).filter(Boolean);
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -238,11 +367,19 @@ function normalizeName(s) {
     .replace(/[\s\-_]+/g, ' ');
 }
 
-/** Coerce a string|array|undefined equipment arg into a clean string[]. */
+/**
+ * Coerce a string|array|undefined equipment arg into a clean, de-duplicated
+ * string[] of the table's SINGULAR slugs (accepts engine/profile plurals too).
+ */
 function normalizeEquipmentList(equipment) {
   if (equipment == null) return [];
   const arr = Array.isArray(equipment) ? equipment : [equipment];
-  return arr.filter(e => typeof e === 'string' && e.length);
+  const out = [];
+  for (const e of arr) {
+    const slug = toSingularEquipment(e);
+    if (slug && !out.includes(slug)) out.push(slug);
+  }
+  return out;
 }
 
 module.exports = {
@@ -250,6 +387,11 @@ module.exports = {
   getMovementById,
   getMovementsByCategory,
   getMovementsByEquipment,
+  getMovementsByPattern,
   searchByAlias,
   getSubstitutes,
+  // vocab helpers (used by the engine adapter in P1-C)
+  toSingularEquipment,
+  levelRank,
+  EQUIPMENT_PLURAL_TO_SINGULAR,
 };
