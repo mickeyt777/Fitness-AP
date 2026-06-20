@@ -106,8 +106,9 @@ function completeWorkout(userId, workoutId) {
     }
   }
 
-  // NOTE (Trap 2 / N+1): progressWorkout() calls getExercise() per set.
-  // Fine on the in-memory array today; revisit when movements move to SQLite in Phase 1.
+  // progressWorkout() now resolves exercise metadata once up front (batched over
+  // distinct exercise_ids) rather than per set, so it stays a single lookup pass
+  // when the movement library moves from the in-memory array to SQLite (Phase 1).
   const progression = progressWorkout(currentSets, previousSets);
   return { message: 'Workout completed.', progression };
 }

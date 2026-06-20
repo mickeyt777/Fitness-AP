@@ -20,7 +20,7 @@
 'use strict';
 
 const { v4: uuidv4 } = require('uuid');
-const { getByPattern, pickExercise, getCurrentWeekNumber } = require('./exercises');
+const { getByPattern, pickExercise, getCurrentWeekNumber, getExercise } = require('./exercises');
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -335,6 +335,21 @@ function progressWorkout(currentSets, previousSets = []) {
     (previousSets || []).map(s => [s.exercise_id, s])
   );
 
+  // Resolve exercise metadata once, up front, for every distinct exercise_id in
+  // this session — instead of looking each one up inside the per-set loop.
+  // Today getExercise() is an in-memory map read, but Phase 1 moves the movement
+  // library into SQLite; batching here keeps that switch from turning this loop
+  // into an N+1 query. Unknown ids resolve to null and fall back to upper-body.
+  const lowerBodyPatterns = ['squat', 'hinge'];
+  const exerciseById = {};
+  for (const exId of new Set(currentSets.map(s => s.exercise_id).filter(Boolean))) {
+    try {
+      exerciseById[exId] = getExercise(exId);
+    } catch (_) {
+      exerciseById[exId] = null; // unknown exercise — default to upper-body increment
+    }
+  }
+
   const recommendations = {};
 
   for (const set of currentSets) {
@@ -351,14 +366,10 @@ function progressWorkout(currentSets, previousSets = []) {
     const prev = previousByExercise[exercise_id];
     const currentWeight = actual_weight;
 
-    // Determine which increment to use (upper vs lower body).
-    const lowerBodyPatterns = ['squat', 'hinge'];
-    const { getExercise } = require('./exercises');
-    let isLower = false;
-    try {
-      const ex = getExercise(exercise_id);
-      isLower = lowerBodyPatterns.includes(ex.pattern);
-    } catch (_) { /* unknown exercise — default to upper */ }
+    // Determine which increment to use (upper vs lower body), using the
+    // metadata resolved once above rather than a per-set lookup.
+    const ex = exerciseById[exercise_id];
+    const isLower = ex ? lowerBodyPatterns.includes(ex.pattern) : false;
 
     const increment = isLower ? WEIGHT_INCREMENT.lower_body : WEIGHT_INCREMENT.upper_body;
 
