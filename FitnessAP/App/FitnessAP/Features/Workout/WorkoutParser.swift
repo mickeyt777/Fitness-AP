@@ -66,6 +66,53 @@ enum WorkoutParser {
         return try await APIClient.shared.aiParse(userId: userId, rawText: rawText)
     }
 
+    // MARK: - Alias resolution (P1-D)
+
+    /// Resolve each set's `exercise_name` to a canonical movement id/name via
+    /// GET /movements/search. Kept as an explicit step (separate from parse) so
+    /// the on-device parse path stays fully offline until the caller asks for
+    /// resolution. Best-effort: a set whose name doesn't confidently match (or
+    /// whose lookup fails) is returned with `movement_id` left nil rather than
+    /// failing the whole batch. Input order is preserved. Lookups run
+    /// concurrently.
+    static func resolve(userId: String, sets: [ParsedWorkoutSet]) async -> [ParsedWorkoutSet] {
+        guard !sets.isEmpty else { return sets }
+
+        return await withTaskGroup(of: (Int, ParsedWorkoutSet).self) { group in
+            for (index, set) in sets.enumerated() {
+                group.addTask {
+                    var resolved = set
+                    if let result = try? await APIClient.shared.searchMovement(
+                        userId: userId, query: set.exercise_name
+                    ), let match = result.match {
+                        resolved.movement_id = match.id
+                        resolved.canonical_name = match.name
+                    }
+                    return (index, resolved)
+                }
+            }
+
+            var out = Array(sets)
+            for await (index, resolved) in group {
+                out[index] = resolved
+            }
+            return out
+        }
+    }
+
+    /// Convenience: resolve the sets inside a parse response, returning a new
+    /// response with resolved sets. Leaves `parsed` untouched when there are none.
+    static func resolve(userId: String, response: AiParseResponse) async -> AiParseResponse {
+        guard let sets = response.parsed.sets, !sets.isEmpty else { return response }
+        let resolvedSets = await resolve(userId: userId, sets: sets)
+        let parsed = ParsedWorkout(
+            type: response.parsed.type,
+            sets: resolvedSets,
+            confidence: response.parsed.confidence
+        )
+        return AiParseResponse(parsed: parsed, source: response.source)
+    }
+
     // MARK: - On-device path
 
     private static func parseOnDevice(rawText: String) async throws -> AiParseResponse {

@@ -23,6 +23,7 @@ const authRouter         = require('./routes/auth');
 const usersRouter        = require('./routes/users');
 const profilesRouter     = require('./routes/profiles');
 const workoutsRouter     = require('./routes/workouts');
+const movementsRouter    = require('./routes/movements');
 const checkinsRouter     = require('./routes/checkins');
 const macrosRouter       = require('./routes/macros');
 const measurementsRouter = require('./routes/measurements');
@@ -67,6 +68,7 @@ app.use('/auth',         authRouter);   // POST /auth/apple — no auth required
 app.use('/users',        usersRouter);
 app.use('/profiles',     profilesRouter);
 app.use('/workouts',     workoutsRouter);
+app.use('/movements',    movementsRouter);
 app.use('/checkins',     checkinsRouter);
 app.use('/macros',       macrosRouter);
 app.use('/measurements', measurementsRouter);

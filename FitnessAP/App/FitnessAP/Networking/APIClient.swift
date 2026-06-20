@@ -208,6 +208,18 @@ final class APIClient {
         return try await perform(req)
     }
 
+    // MARK: - Movement alias resolution (P1-D)
+
+    /// Resolves a spoken/typed exercise name to canonical movement(s) via
+    /// GET /movements/search?q=. Returns the best match plus ranked candidates.
+    func searchMovement(userId: String, query: String) async throws -> MovementSearchResult {
+        let encoded = query.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
+        let req = try buildRequest(method: "GET",
+                                   path: "/movements/search?q=\(encoded)",
+                                   asUserId: userId)
+        return try await perform(req)
+    }
+
     // MARK: - Measurements
 
     /// Fetches body measurement history. `weeks` controls how far back to look (default 26).
