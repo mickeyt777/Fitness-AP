@@ -17,7 +17,7 @@
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/database');
 const movementService = require('./movementService');
-const { computeStepGoal, conflicts, activityTrend } = require('../lib/activityMath');
+const { computeStepGoal, conflicts, activityTrend, deriveDate } = require('../lib/activityMath');
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -90,7 +90,7 @@ function upsertDailyActivity(userId, body) {
 
 function logCardioSession(userId, body) {
   const db = getDb();
-  const date = body.date ?? (body.started_at ? String(body.started_at).slice(0, 10) : todayStr());
+  const date = deriveDate(body.date, body.started_at, todayStr());
   const movement_id = body.movement_id ?? resolveModalityToMovementId(body.modality);
 
   const id = uuidv4();
@@ -120,7 +120,7 @@ function syncHealthKit(userId, workouts) {
   const tx = db.transaction((items) => {
     for (const w of items) {
       if (!w || !w.hk_uuid) continue; // an HK workout without its UUID can't be deduped — skip
-      const date = w.date ?? (w.started_at ? String(w.started_at).slice(0, 10) : todayStr());
+      const date = deriveDate(w.date, w.started_at, todayStr());
       const movement_id = w.movement_id ?? resolveModalityToMovementId(w.modality);
       const now = new Date().toISOString();
 

@@ -48,6 +48,32 @@ function computeStepGoal(priorSteps) {
   return roundTo(m * STEP_GOAL.NUDGE, STEP_GOAL.ROUND_STEP);
 }
 
+// --- date derivation --------------------------------------------------------
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function isValidDate(s) {
+  return typeof s === 'string' && ISO_DATE.test(s) && !Number.isNaN(Date.parse(s));
+}
+
+/**
+ * deriveDate(explicitDate, startedAt, todayStr) → a valid YYYY-MM-DD.
+ *
+ * The calendar day a bout belongs to is the dedup key, so it must never be
+ * garbage. Prefer an explicit valid date; else the date portion of started_at
+ * (only if that portion is itself a valid date — a date-less "T07:00:00Z" must
+ * NOT become the date and silently break same-day dedup); else fall back to
+ * today. This is the guard for the malformed-started_at case found in P2-B smoke.
+ */
+function deriveDate(explicitDate, startedAt, todayStr) {
+  if (isValidDate(explicitDate)) return explicitDate;
+  if (typeof startedAt === 'string') {
+    const datePart = startedAt.slice(0, 10);
+    if (isValidDate(datePart)) return datePart;
+  }
+  return todayStr;
+}
+
 // --- dedup: time-window overlap + activity-type match -----------------------
 
 function toMs(t) {
@@ -130,6 +156,8 @@ module.exports = {
   median,
   roundTo,
   computeStepGoal,
+  isValidDate,
+  deriveDate,
   intervalsOverlap,
   normalizeModality,
   sameActivityType,
