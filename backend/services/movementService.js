@@ -219,53 +219,81 @@ function getMovementsByPattern(pattern, opts = {}) {
 }
 
 /**
- * searchByAlias(q) → single best-match movement, or null.
+ * scoreMatch(needle, name, aliases) → number (0 = no match, higher = better).
  *
- * For AI/spoken-name resolution we want ONE canonical movement, not a list, so
- * the parse step can map an utterance straight to a movement id. Strategy
- * (first hit wins, highest confidence first):
- *
- *   1. Exact match on normalized `name`.
- *   2. Exact match on a normalized entry in the `aliases` array.
- *   3. Substring match (query contained in name/alias, or name/alias contained
- *      in query), tie-broken toward the shortest name so "row" prefers the
- *      simplest canonical movement rather than a longer variant.
- *
- * Normalization lowercases, trims, and collapses separators (spaces/hyphens/
- * underscores) so "push up", "push-up" and "pushup" all collide. Returns null
- * when nothing plausibly matches; callers decide whether that's a 404 or a
- * "didn't catch that" for the user.
+ * Deterministic confidence score for resolving a spoken/typed name to a
+ * movement. Highest signal first, taking the best score across the canonical
+ * name and every alias:
+ *   exact name           100
+ *   exact alias           90
+ *   name/needle prefix    70   (one starts with the other)
+ *   alias/needle prefix   60
+ *   name/needle substring 50   (one contains the other)
+ *   alias/needle substr.  40
+ * All comparisons run on normalized strings (lowercased, trimmed, separators
+ * collapsed) so "push up" / "push-up" / "pushup" collide.
  */
-function searchByAlias(q) {
-  if (q == null) return null;
+function scoreMatch(needle, name, aliases) {
+  const rel = (a, b) =>
+    a === b ? 3 : (a.startsWith(b) || b.startsWith(a)) ? 2 : (a.includes(b) || b.includes(a)) ? 1 : 0;
+
+  let best = 0;
+  const nameRel = rel(name, needle);
+  if (nameRel === 3) return 100;
+  if (nameRel === 2) best = Math.max(best, 70);
+  if (nameRel === 1) best = Math.max(best, 50);
+
+  for (const a of aliases) {
+    const r = rel(a, needle);
+    if (r === 3) best = Math.max(best, 90);
+    else if (r === 2) best = Math.max(best, 60);
+    else if (r === 1) best = Math.max(best, 40);
+  }
+  return best;
+}
+
+/**
+ * searchMovements(q, opts?) → ranked array of matching movements (possibly []).
+ *
+ * For AI/spoken-name resolution. Returns matches ordered by descending score
+ * (see scoreMatch), tie-broken toward the shortest canonical name (so a bare
+ * "rdl" surfaces the simplest variant first) and then alphabetically for full
+ * determinism. opts.limit caps the list (default 6). The first element is the
+ * single best match.
+ */
+function searchMovements(q, opts = {}) {
+  if (q == null) return [];
   const needle = normalizeName(q);
-  if (!needle) return null;
+  if (!needle) return [];
+  const limit = opts.limit ?? 6;
 
   const db   = getDb();
   const rows = db.prepare('SELECT * FROM movements').all();
 
-  let exactName    = null;
-  let exactAlias   = null;
-  let substrBest   = null;
-
+  const scored = [];
   for (const row of rows) {
     const name    = normalizeName(row.name);
     const aliases = parseJsonArray(row.aliases).map(normalizeName);
-
-    if (name === needle) { exactName = row; break; }
-    if (!exactAlias && aliases.includes(needle)) { exactAlias = row; continue; }
-
-    if (!exactAlias) {
-      const candidates = [name, ...aliases];
-      const hit = candidates.some(c => c.includes(needle) || needle.includes(c));
-      if (hit && (!substrBest || row.name.length < substrBest.name.length)) {
-        substrBest = row;
-      }
-    }
+    const score   = scoreMatch(needle, name, aliases);
+    if (score > 0) scored.push({ row, score });
   }
 
-  const best = exactName || exactAlias || substrBest;
-  return rowToMovement(best);
+  scored.sort((a, b) =>
+    b.score - a.score
+    || a.row.name.length - b.row.name.length
+    || a.row.name.localeCompare(b.row.name));
+
+  return scored.slice(0, limit).map(s => rowToMovement(s.row));
+}
+
+/**
+ * searchByAlias(q) → single best-match movement, or null.
+ * Thin convenience over searchMovements() for callers that only want the top
+ * hit (e.g. a direct id resolution with no disambiguation UI).
+ */
+function searchByAlias(q) {
+  const matches = searchMovements(q, { limit: 1 });
+  return matches.length ? matches[0] : null;
 }
 
 /**
@@ -388,6 +416,7 @@ module.exports = {
   getMovementsByCategory,
   getMovementsByEquipment,
   getMovementsByPattern,
+  searchMovements,
   searchByAlias,
   getSubstitutes,
   // vocab helpers (used by the engine adapter in P1-C)
