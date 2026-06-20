@@ -97,10 +97,19 @@ function handleWorkoutLog(db, userId, payload, now) {
 
   let order = existingCount + 1;
   for (const set of (payload.sets ?? [])) {
-    const exerciseSlug = set.exercise_id ?? set.exercise_name?.toLowerCase().replace(/\s+/g, '_') ?? 'unknown';
+    // Prefer the canonical movement id resolved by the iOS app
+    // (WorkoutParser.resolve → movements table id, e.g. "goblet_squat").
+    // Fall back to a legacy exercise_id, then to a slug of the spoken name.
+    const exerciseSlug =
+      set.movement_id
+      ?? set.exercise_id
+      ?? set.exercise_name?.toLowerCase().replace(/\s+/g, '_')
+      ?? 'unknown';
+    // Prefer the canonical movement name when resolution matched one.
+    const exerciseName = set.canonical_name ?? set.exercise_name ?? exerciseSlug;
     insertSet.run(
       uuidv4(), workout.id,
-      exerciseSlug, set.exercise_name ?? exerciseSlug,
+      exerciseSlug, exerciseName,
       order++,
       set.reps ?? null, set.weight_kg ?? null, set.rpe ?? null,
       now

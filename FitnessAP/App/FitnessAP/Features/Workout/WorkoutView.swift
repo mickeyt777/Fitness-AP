@@ -161,11 +161,17 @@ struct WorkoutView: View {
         pendingRaw   = rawText
         do {
             let result = try await WorkoutParser.parse(userId: appState.userId, rawText: rawText)
-            isParsing = false
             if result.parsed.type == "workout_log",
                let sets = result.parsed.sets, !sets.isEmpty {
-                pendingParse = result
+                // Best-effort: resolve each set's spoken name to a canonical
+                // movement id/name before confirming, so the logged set carries
+                // movement_id. Never throws — unresolved sets pass through with
+                // movement_id nil. Spinner stays up through resolution.
+                let resolved = await WorkoutParser.resolve(userId: appState.userId, response: result)
+                isParsing    = false
+                pendingParse = resolved
             } else {
+                isParsing = false
                 appendAssistant("I couldn't find any sets in that. Try: \"3 sets goblet squat 16kg RPE 7\"")
             }
         } catch {
@@ -330,7 +336,9 @@ struct ConfirmCard: View {
             }
             ForEach(Array(sets.enumerated()), id: \.offset) { _, set in
                 HStack {
-                    Text(set.exercise_name).font(.subheadline)
+                    // Show the resolved canonical name when alias resolution
+                    // matched a movement; otherwise the name as spoken/typed.
+                    Text(set.canonical_name ?? set.exercise_name).font(.subheadline)
                     Spacer()
                     Text(detail(set)).font(.subheadline).foregroundColor(.secondary)
                 }
