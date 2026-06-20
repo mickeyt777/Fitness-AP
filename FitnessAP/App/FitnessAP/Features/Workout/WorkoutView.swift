@@ -186,7 +186,7 @@ struct WorkoutView: View {
         let body = SendChatBody(
             raw_text:          pendingRaw,
             parsed_payload:    parse.parsed,
-            parser_source:     "cloud",
+            parser_source:     parse.source,   // "on-device" | "cloud" — actual path that ran
             parser_confidence: parse.parsed.confidence
         )
         do {

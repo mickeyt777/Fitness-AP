@@ -78,8 +78,11 @@ function handleWorkoutLog(db, userId, payload, now) {
   // If none exists, create an ad-hoc workout record.
   if (!workout) {
     const wId = uuidv4();
+    // Ad-hoc container for chat-logged sets. session_type is left NULL: the
+    // table CHECK only permits engine/template session types and this isn't
+    // one (a NULL satisfies the CHECK). Origin is kept in notes for traceability.
     db.prepare(`
-      INSERT INTO workouts (id, user_id, planned_date, session_type, created_at)
+      INSERT INTO workouts (id, user_id, planned_date, notes, created_at)
       VALUES (?, ?, ?, 'chat_logged', ?)
     `).run(wId, userId, today, now);
     workout = db.prepare('SELECT * FROM workouts WHERE id = ?').get(wId);
