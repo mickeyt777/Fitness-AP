@@ -9,7 +9,7 @@ struct OnboardingView: View {
 
     // Navigation
     @State private var step = 0
-    private let totalSteps = 3
+    private let totalSteps = 4
 
     // Step 1 — About You
     // unitSystem drives all height/weight display in this step.
@@ -34,9 +34,18 @@ struct OnboardingView: View {
     @State private var injectionDay: Int = 1
     @State private var glpStartDate: Date = Date()
 
+    // Step 4 — Activity tracking (P2-C)
+    @State private var hasAppleWatch = false
+    @State private var healthStatus: HealthConnectStatus = .idle
+
     // Save state
     @State private var isSaving = false
     @State private var saveError: String?
+
+    private enum HealthConnectStatus: Equatable {
+        case idle, connecting, connected, unavailable
+        case failed(String)
+    }
 
     private let equipmentOptions = [
         ("bodyweight",  "Bodyweight"),
@@ -72,7 +81,8 @@ struct OnboardingView: View {
                         switch step {
                         case 0:  step1
                         case 1:  step2
-                        default: step3
+                        case 2:  step3
+                        default: step4
                         }
                     }
                     .padding()
@@ -291,13 +301,101 @@ struct OnboardingView: View {
         }
     }
 
+    // MARK: - Step 4: Activity tracking
+
+    private var step4: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Text("Optionally connect Apple Health so we can track your steps and cardio automatically.")
+                .foregroundColor(.secondary)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Label("Do you wear an Apple Watch?", systemImage: "applewatch")
+                    .font(.subheadline).bold()
+                Picker("Apple Watch", selection: $hasAppleWatch) {
+                    Text("Yes").tag(true)
+                    Text("No").tag(false)
+                }
+                .pickerStyle(.segmented)
+                Text(hasAppleWatch
+                     ? "Great — connecting Apple Health pulls in your steps, distance, and workouts."
+                     : "No problem. Your iPhone still counts steps, and you can log cardio by hand.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Apple Health", systemImage: "heart.fill")
+                    .font(.subheadline).bold()
+                Button {
+                    Task { await connectHealth() }
+                } label: {
+                    HStack(spacing: 6) {
+                        if healthStatus == .connecting { ProgressView() }
+                        Text(connectButtonTitle)
+                    }
+                }
+                .buttonStyle(.bordered)
+                .disabled(healthStatus == .connecting || healthStatus == .connected)
+
+                if let line = healthStatusLine {
+                    Text(line).font(.caption).foregroundColor(healthStatusColor)
+                }
+            }
+
+            Text("Manual entry is always available — connecting is optional.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+
     // MARK: - Helpers
 
     private var stepTitle: String {
         switch step {
         case 0:  return "About You"
         case 1:  return "Your Training"
-        default: return "Your GLP-1"
+        case 2:  return "Your GLP-1"
+        default: return "Activity"
+        }
+    }
+
+    private var connectButtonTitle: String {
+        switch healthStatus {
+        case .connected:  return "Apple Health Connected"
+        case .connecting: return "Connecting…"
+        default:          return "Connect Apple Health"
+        }
+    }
+
+    private var healthStatusLine: String? {
+        switch healthStatus {
+        case .connected:        return "Health access requested — we'll sync your steps and cardio."
+        case .unavailable:      return "Health data isn't available on this device."
+        case .failed(let msg):  return msg
+        case .idle, .connecting: return nil
+        }
+    }
+
+    private var healthStatusColor: Color {
+        switch healthStatus {
+        case .failed, .unavailable: return .red
+        default:                    return .secondary
+        }
+    }
+
+    /// Requests HealthKit read access. The system sheet resolves whether or not the
+    /// user grants — actual data sync (cadence) is wired on the Today surface in Slice 3.
+    private func connectHealth() async {
+        guard HealthKitManager.shared.isHealthDataAvailable else {
+            healthStatus = .unavailable
+            return
+        }
+        healthStatus = .connecting
+        do {
+            try await HealthKitManager.shared.requestAuthorization()
+            healthStatus = .connected
+        } catch {
+            healthStatus = .failed(error.localizedDescription)
         }
     }
 
