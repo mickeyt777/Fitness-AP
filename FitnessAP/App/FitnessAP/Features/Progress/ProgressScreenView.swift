@@ -59,6 +59,7 @@ struct ProgressScreenView: View {
     @State private var timeRange: TimeRange = .month
     @State private var measurements: [BodyMeasurement] = []
     @State private var checkins: [CheckIn] = []
+    @State private var activityDaily: [DailyActivityPoint] = []
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var showLogForm = false
@@ -144,6 +145,9 @@ struct ProgressScreenView: View {
                 BodyMeasurementsSection(measurements: measurements, unitSystem: appState.unitSystem)
                     .padding(.horizontal)
 
+                ActivitySection(daily: activityDaily)
+                    .padding(.horizontal)
+
                 WellnessSection(checkins: checkins)
                     .padding(.horizontal)
             }
@@ -160,6 +164,8 @@ struct ProgressScreenView: View {
         errorMessage = nil
         async let mTask = APIClient.shared.getMeasurements(userId: appState.userId, weeks: timeRange.weeks)
         async let cTask = APIClient.shared.getCheckins(userId: appState.userId, days: timeRange.days)
+        // Activity is supplementary — a failure here must not blank the weight/measurement screen.
+        async let aTask = APIClient.shared.getActivitySummary(userId: appState.userId, days: timeRange.days)
         do {
             let (m, c) = try await (mTask, cTask)
             measurements = m
@@ -167,6 +173,7 @@ struct ProgressScreenView: View {
         } catch {
             errorMessage = error.localizedDescription
         }
+        activityDaily = (try? await aTask)?.daily ?? []
         isLoading = false
     }
 }
@@ -654,6 +661,132 @@ private struct WellnessTile: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.tertiarySystemBackground))
         .cornerRadius(10)
+    }
+}
+
+// MARK: - Activity (steps + active energy) section
+// Driven by GET /activity/:userId/summary → daily[]. Units are HealthKit-native
+// (steps are counts, energy is kcal) so no UnitSystem conversion is needed here.
+
+private struct ActivitySection: View {
+    let daily: [DailyActivityPoint]
+
+    private func points(_ value: (DailyActivityPoint) -> Double?) -> [(date: Date, value: Double)] {
+        daily.compactMap { d in
+            guard let date = d.date.asProgressDate, let v = value(d) else { return nil }
+            return (date, v)
+        }
+        .sorted { $0.date < $1.date }
+    }
+
+    private static let stepFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.numberStyle = .decimal
+        f.maximumFractionDigits = 0
+        return f
+    }()
+
+    var body: some View {
+        let stepPts   = points { $0.steps.map(Double.init) }
+        let energyPts = points { $0.active_energy_kcal }
+
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Activity", systemImage: "figure.walk")
+                .font(.headline)
+
+            if stepPts.isEmpty && energyPts.isEmpty {
+                progressEmptyState("No activity data yet — connect Apple Health or log steps to see trends.")
+            } else {
+                ActivityMetricRow(
+                    title: "Steps",
+                    systemImage: "shoeprints.fill",
+                    color: .green,
+                    points: stepPts,
+                    style: .bar,
+                    formatValue: { v in
+                        let n = Self.stepFormatter.string(from: NSNumber(value: Int(v.rounded()))) ?? "\(Int(v))"
+                        return "\(n) steps"
+                    }
+                )
+                Divider()
+                ActivityMetricRow(
+                    title: "Active Energy",
+                    systemImage: "flame.fill",
+                    color: .orange,
+                    points: energyPts,
+                    style: .line,
+                    formatValue: { "\(Int($0.rounded())) kcal" }
+                )
+            }
+        }
+        .padding(16)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+}
+
+// MARK: - Activity sparkline row
+
+private struct ActivityMetricRow: View {
+    enum Style { case bar, line }
+
+    let title: String
+    let systemImage: String
+    let color: Color
+    let points: [(date: Date, value: Double)]
+    let style: Style
+    let formatValue: (Double) -> String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Image(systemName: systemImage).font(.caption2).foregroundColor(color)
+                    Text(title).font(.caption).foregroundColor(.secondary)
+                }
+                if let last = points.last?.value {
+                    Text(formatValue(last)).font(.title3).fontWeight(.semibold)
+                } else {
+                    Text("–").font(.title3).fontWeight(.semibold).foregroundColor(.secondary)
+                }
+            }
+            .frame(width: 120, alignment: .leading)
+
+            if points.count >= 2 {
+                Chart(points, id: \.date) { point in
+                    switch style {
+                    case .bar:
+                        BarMark(
+                            x: .value("Date", point.date),
+                            y: .value(title, point.value)
+                        )
+                        .foregroundStyle(color.opacity(0.85))
+                    case .line:
+                        LineMark(
+                            x: .value("Date", point.date),
+                            y: .value(title, point.value)
+                        )
+                        .foregroundStyle(color)
+                        .interpolationMethod(.catmullRom)
+                        AreaMark(
+                            x: .value("Date", point.date),
+                            y: .value(title, point.value)
+                        )
+                        .foregroundStyle(color.opacity(0.12))
+                        .interpolationMethod(.catmullRom)
+                    }
+                }
+                .chartXAxis(.hidden)
+                .chartYAxis(.hidden)
+                .frame(height: 48)
+            } else {
+                Text("Not enough data yet")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(height: 48)
+            }
+        }
     }
 }
 
