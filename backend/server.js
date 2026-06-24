@@ -35,6 +35,7 @@ const webhooksRouter     = require('./routes/webhooks');
 const devicesRouter      = require('./routes/devices');
 const photosRouter       = require('./routes/photos');
 const activityRouter     = require('./routes/activity');
+const recoveryRouter     = require('./routes/recovery');
 
 // ── App setup ──────────────────────────────────────────────────────────────
 
@@ -80,6 +81,7 @@ app.use('/webhooks',     webhooksRouter);
 app.use('/devices',      devicesRouter);
 app.use('/photos',       photosRouter);
 app.use('/activity',     activityRouter);
+app.use('/recovery',     recoveryRouter);
 
 // AI routes get their own tighter rate limit on top of the global one.
 app.use('/ai', aiRateLimiter, aiRouter);
