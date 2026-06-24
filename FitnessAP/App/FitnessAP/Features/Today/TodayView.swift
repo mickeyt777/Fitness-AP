@@ -52,6 +52,9 @@ struct TodayView: View {
                     .padding(.horizontal)
                     .padding(.top, 4)
 
+                RecoveryCard(userId: appState.userId)
+                    .padding(.horizontal)
+
                 MacroCard(userId: appState.userId)
                     .padding(.horizontal)
 

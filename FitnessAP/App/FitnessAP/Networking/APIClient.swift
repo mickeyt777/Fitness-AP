@@ -292,4 +292,13 @@ final class APIClient {
                                    body: body, asUserId: userId)
         return try await perform(req)
     }
+
+    // MARK: - Recovery (P2-D: rest-day / recovery read)
+
+    /// Today's non-clinical recovery read (train / easy / rest). `state == "unknown"`
+    /// when there's no recent check-in to base a read on.
+    func getRecovery(userId: String) async throws -> RecoveryRead {
+        let req = try buildRequest(method: "GET", path: "/recovery/\(userId)", asUserId: userId)
+        return try await perform(req)
+    }
 }
