@@ -29,6 +29,12 @@ function getWeeklyNarrative(userId, weekEndDate = null) {
     `Check-in days logged: ${summary.checkins.days_logged}/7`,
     `Average energy: ${summary.checkins.avg_energy ?? '?'}/10`,
     `Symptom days: ${summary.checkins.symptom_days}`,
+    summary.activity.days_logged
+      ? `Steps: avg ${summary.activity.avg_steps ?? '?'}/day over ${summary.activity.days_logged} day(s), step goal hit ${summary.activity.step_goal_hit_days} day(s)`
+      : 'No step data logged this week',
+    summary.activity.cardio_sessions
+      ? `Cardio: ${summary.activity.cardio_sessions} session(s), ${summary.activity.cardio_minutes} min total (easy ${summary.activity.cardio_by_intensity.easy} / moderate ${summary.activity.cardio_by_intensity.moderate} / hard ${summary.activity.cardio_by_intensity.hard})`
+      : '',
     `Lean-mass proxy: ${summary.lean_mass_proxy.score ?? 'no measurements'} — ${summary.lean_mass_proxy.summary}`,
     summary.body_weight.this_week_kg ? `Weight: ${summary.body_weight.this_week_kg} kg (4-week trend: ${summary.body_weight.trend_4wk_kg ?? '?'} kg)` : 'No weight logged',
     summary.drug_context.in_titration_window ? `Note: User is in titration window (day ${summary.drug_context.days_since_dose_change} of 14 after dose change)` : '',

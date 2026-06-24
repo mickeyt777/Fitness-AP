@@ -139,6 +139,37 @@ function aggregateWeeklyReport(db, userId, weekEndDate = null) {
     ? parseFloat((fourWeekWeights.reduce((s, r) => s + r.weight_kg, 0) / fourWeekWeights.length).toFixed(1))
     : null;
 
+  // ── Activity (steps / cardio / active energy) ──────────────────────────────
+
+  const activityDays = db.prepare(`
+    SELECT date, steps, distance_m, active_energy_kcal, step_goal
+    FROM daily_activity
+    WHERE user_id = ? AND date BETWEEN ? AND ?
+    ORDER BY date ASC
+  `).all(userId, startDate, endDate);
+
+  const stepVals = activityDays.map(d => d.steps).filter(v => v !== null && v !== undefined);
+  const avgSteps = stepVals.length
+    ? Math.round(stepVals.reduce((a, b) => a + b, 0) / stepVals.length)
+    : null;
+  const totalDistanceM  = activityDays.reduce((s, d) => s + (d.distance_m ?? 0), 0);
+  const totalActiveKcal = activityDays.reduce((s, d) => s + (d.active_energy_kcal ?? 0), 0);
+  const stepGoalHitDays = activityDays.filter(
+    d => d.steps != null && d.step_goal && d.steps >= d.step_goal
+  ).length;
+
+  // Non-superseded cardio bouts only (HealthKit-wins dedup already applied at write).
+  const cardioRows = db.prepare(`
+    SELECT duration_min, intensity FROM cardio_sessions
+    WHERE user_id = ? AND date BETWEEN ? AND ? AND superseded_by IS NULL
+  `).all(userId, startDate, endDate);
+
+  const cardioMinutes = Math.round(cardioRows.reduce((s, c) => s + (c.duration_min ?? 0), 0));
+  const cardioByIntensity = { easy: 0, moderate: 0, hard: 0 };
+  for (const c of cardioRows) {
+    if (c.intensity && cardioByIntensity[c.intensity] != null) cardioByIntensity[c.intensity]++;
+  }
+
   // ── Dose / titration context ──────────────────────────────────────────────
 
   const profile = db.prepare('SELECT * FROM profiles WHERE user_id = ?').get(userId);
@@ -177,6 +208,17 @@ function aggregateWeeklyReport(db, userId, weekEndDate = null) {
     },
 
     measurements,
+
+    activity: {
+      days_logged:              stepVals.length,
+      avg_steps:                avgSteps,
+      step_goal_hit_days:       stepGoalHitDays,
+      total_distance_km:        parseFloat((totalDistanceM / 1000).toFixed(1)),
+      total_active_energy_kcal: Math.round(totalActiveKcal),
+      cardio_sessions:          cardioRows.length,
+      cardio_minutes:           cardioMinutes,
+      cardio_by_intensity:      cardioByIntensity,
+    },
 
     body_weight: {
       this_week_kg:   thisWeekMeasurement?.weight_kg ?? null,
