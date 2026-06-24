@@ -13,6 +13,22 @@ Top of log should be (newest first):
 
 ---
 
+## ✅ P2-C COMPLETE — 2026-06-24 (all four slices shipped, build green on device)
+
+All slices were built, statically verified, Xcode-built green by Mickey, and committed one-per-slice on `v2-phase1`:
+
+- **Slice 1 — Networking.** `Networking/Models/ActivityModels.swift` (Decodable/Encodable for the full `/activity` contract; one `CardioSession` covers both the full row and the summary projection) + five `APIClient` methods (`getActivitySummary`, `getCardioSessions`, `syncHealthKitWorkouts`, `upsertDailyActivity`, `logCardioSession`).
+- **Slice 2 — HealthKit read + onboarding.** `App/HealthKitManager.swift` (`@MainActor`, read-only: steps / walking+running distance / active energy / heart rate / workouts; maps `HKWorkout` → `HealthKitWorkout` by `uuid`; `performInitialSync` helper). New onboarding step 4 (Apple Watch question + Connect Apple Health). **Xcode config landed:** HealthKit capability (`com.apple.developer.healthkit` in entitlements) + `INFOPLIST_KEY_NSHealthShareUsageDescription` (no Info.plist file — project uses `GENERATE_INFOPLIST_FILE`). Needed `import Combine` in the manager (it doesn't import SwiftUI).
+- **Slice 3 — Today surface.** `Features/Today/ActivityCard.swift` — step ring vs adaptive `step_goal`, weekly cardio minutes, non-clinical trend. Best-effort HealthKit sync on appear, then `GET /activity/:userId/summary`. Wired into `TodayView` between MacroCard and the plan. **Decisions:** ring (not bar); sync-on-appear cadence (revisit on device).
+- **Slice 4 — Progress surface.** `ActivitySection` in `ProgressScreenView.swift` — steps bar sparkline + active-energy line/area sparkline from `summary.daily`, failure-isolated fetch (won't blank the weight/measurement screen).
+
+**Carry-over follow-ups (candidate P2-D / cleanup):**
+1. Spoken cardio via chat still lands in `workout_sets`, not `cardio_sessions` (backend AI-parse routing — roadmap Pillar 2 step 3).
+2. Today card HealthKit sync cadence (sync-on-appear re-pulls ~30 days each appearance) — consider pull-to-refresh or a throttle.
+3. `avg_hr`/`intensity` are sent from HealthKit where available but `intensity` is never inferred from HK.
+
+---
+
 ## Status going in — P2-A and P2-B are COMPLETE (backend done, don't revisit)
 
 Verified green on 2026-06-20: migrations 001→015 apply clean, 26 pure-logic unit tests, SQL-mirror behavior checks, and a 14-check live HTTP smoke test all pass.
@@ -84,13 +100,13 @@ Dev auth: `X-User-Id: <userId>` header (prod: `Authorization: Bearer <jwt>`). Po
 
 ## P2-C slice plan (one commit per slice; verify, then hand off)
 
-**Slice 1 — Networking only (no UI).** `ActivityModels.swift` (Decodable/Encodable structs mirroring the contract above) + `APIClient` methods: `getActivitySummary`, `getCardioSessions`, `syncHealthKitWorkouts`, `upsertDailyActivity`, `logCardioSession`. Verify by decoding captured sample JSON (from the smoke test) through the structs. No HealthKit yet. Smallest, safest first slice.
+**Slice 1 — Networking only (no UI). ✅ DONE.** `ActivityModels.swift` (Decodable/Encodable structs mirroring the contract above) + `APIClient` methods: `getActivitySummary`, `getCardioSessions`, `syncHealthKitWorkouts`, `upsertDailyActivity`, `logCardioSession`. Verify by decoding captured sample JSON (from the smoke test) through the structs. No HealthKit yet. Smallest, safest first slice.
 
-**Slice 2 — HealthKit read + onboarding permission.** A `HealthKitManager` (read steps, walking+running distance, active energy via `HKHealthStore`/`HKStatisticsQuery`; map `HKWorkout`s → the `/healthkit/sync` payload using `HKWorkout.uuid` as `hk_uuid`). Add the **Apple Watch question** to `OnboardingView` → request HealthKit authorization accordingly; **manual entry always available regardless of the answer.** Mickey adds the **HealthKit capability + Info.plist `NSHealthShareUsageDescription`** in Xcode (same as Sign in with Apple before it) — call this out explicitly in the slice handoff; it can't be done from here.
+**Slice 2 — HealthKit read + onboarding permission. ✅ DONE.** A `HealthKitManager` (read steps, walking+running distance, active energy via `HKHealthStore`/`HKStatisticsQuery`; map `HKWorkout`s → the `/healthkit/sync` payload using `HKWorkout.uuid` as `hk_uuid`). Add the **Apple Watch question** to `OnboardingView` → request HealthKit authorization accordingly; **manual entry always available regardless of the answer.** Mickey adds the **HealthKit capability + Info.plist `NSHealthShareUsageDescription`** in Xcode (same as Sign in with Apple before it) — call this out explicitly in the slice handoff; it can't be done from here.
 
-**Slice 3 — Today surface.** A steps/cardio ring (or bar) component in `Features/Today/`, wired to `GET /activity/:userId/summary`, sitting alongside `MacroCard` + `CheckInCard`. Show today's steps vs adaptive `step_goal`, cardio minutes, and the non-clinical `trend.label`. Reuse the shared Loading/Empty/Error components.
+**Slice 3 — Today surface. ✅ DONE.** A steps/cardio ring (or bar) component in `Features/Today/`, wired to `GET /activity/:userId/summary`, sitting alongside `MacroCard` + `CheckInCard`. Show today's steps vs adaptive `step_goal`, cardio minutes, and the non-clinical `trend.label`. Reuse the shared Loading/Empty/Error components.
 
-**Slice 4 — Progress surface.** Steps + active-energy sparklines in `ProgressScreenView.swift` next to the existing weight/measurement charts, driven by `summary.daily`.
+**Slice 4 — Progress surface. ✅ DONE.** Steps + active-energy sparklines in `ProgressScreenView.swift` next to the existing weight/measurement charts, driven by `summary.daily`.
 
 (Rest-day/recovery read and the weekly-report fold-in are **P2-D**, after these.)
 
