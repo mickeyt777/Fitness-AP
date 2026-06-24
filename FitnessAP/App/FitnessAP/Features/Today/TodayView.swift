@@ -55,6 +55,9 @@ struct TodayView: View {
                 MacroCard(userId: appState.userId)
                     .padding(.horizontal)
 
+                ActivityCard(userId: appState.userId)
+                    .padding(.horizontal)
+
                 Text("This Week's Plan")
                     .font(.title3).bold()
                     .padding(.horizontal)
