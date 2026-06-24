@@ -7,6 +7,11 @@ Top of log should include the four P2-C commits (networking → HealthKit → To
 
 P2-C is fully shipped (see `HANDOFF_phase2C_ios_healthkit.md`, marked ✅ complete). P2-D was kicked off 2026-06-24; Mickey chose **rest-day/recovery state** as the first workstream. Phase 3 (StoreKit) remains **gated** — do not start.
 
+## ✅ P2-D COMPLETE — 2026-06-24 (both workstreams shipped, build green)
+- **Rest-day/recovery** — backend (Slice 1) + iOS Today card (Slice 2), committed.
+- **Weekly-report fold-in** — backend aggregator + narrative now include activity (steps/cardio), committed.
+- See per-slice details below. Remaining items are carry-overs / optional polish (listed at the end).
+
 ---
 
 ## ✅ P2-D Slice 1 — Backend recovery read — COMPLETE & committed (2026-06-24)
@@ -40,11 +45,17 @@ Smoke: `curl -H "X-User-Id: test-user-001" localhost:3000/recovery/test-user-001
 
 ## P2-D remaining slice plan (one commit per slice; verify, then hand off)
 
-**Slice 2 — iOS recovery surface (Today).** A state-colored recovery card/banner in `Features/Today/`, wired to a new `APIClient.getRecovery(userId:)` + a `RecoveryModels.swift` (Decodable mirroring the contract). Show `label` + `headline` + `reasons`; color by state (ready=green, easy=amber/orange, rest=blue/red — Mickey's call). Hide gracefully on `unknown`/failure, or show the "log a check-in" nudge. Reuse `Shared/Components`. Sits alongside `CheckInCard`/`MacroCard`/`ActivityCard`. Verify by decoding sample JSON through the model (snake_case), static review, brace balance, no type collisions.
+**Slice 2 — iOS recovery surface (Today). ✅ DONE & committed.** `Networking/Models/RecoveryModels.swift` (`RecoveryRead`) + `APIClient.getRecovery(userId:)` + `Features/Today/RecoveryCard.swift` — state-colored card (ready=green, easy=orange, **rest=indigo** [calm, not red], unknown=muted "log a check-in" nudge) showing `label` + score chip + `headline` + `reasons`. Self-fetching, hides on failure (mirrors MacroCard). Placed right after `CheckInCard` in `TodayView`. Verified: all 4 states decode through the model; static review clean. Known limit: fetches once on appear (no live refresh after a new check-in).
 
-**Slice 3 (separate P2-D workstream) — Weekly-report fold-in.** Upgrade `backend/routes/ai.js` `/ai/weekly-report` to incorporate activity/cardio/steps (+ optionally the recovery trend), so the weekly summary reflects movement, not just workouts/macros. Backend-first. **Its free/paid gating belongs to gated Phase 3 — build the content, leave gating out.**
+**Slice 3 — Weekly-report fold-in. ✅ DONE & committed (backend-only).** `engine/weeklyReport.js` gained an `activity` summary section (avg steps, step-goal-hit days, total distance km, active energy kcal, cardio sessions/minutes/intensity — counts only non-superseded cardio). `services/reportService.js` adds steps+cardio lines to `narrative_prompt` (null-safe). `services/aiService.js` tone guideline now has the LLM acknowledge movement while still leading with the lean-mass proxy. Verified: `node --check` + Python sqlite3 mirror (migrations 001–015) asserting the new queries incl. superseded-cardio exclusion. **Gating untouched — belongs to Phase 3.**
 
-**Carry-over candidates (fold in where it fits):** spoken cardio via chat → `cardio_sessions` (backend AI-parse routing, roadmap Pillar 2 step 3); Today HealthKit sync cadence (sync-on-appear re-pulls ~30d → pull-to-refresh/throttle); `intensity` never inferred from HK.
+### Remaining (carry-overs / optional polish — NOT blocking; pick with Mickey)
+- **iOS weekly-report display** (optional): if the app renders the structured summary, surface the new `summary.activity` fields (numbers, not just prose). Small iOS slice.
+- Spoken cardio via chat → `cardio_sessions` (backend AI-parse routing, roadmap Pillar 2 step 3) — still lands in `workout_sets`.
+- Today HealthKit sync cadence (sync-on-appear re-pulls ~30d → pull-to-refresh/throttle).
+- `intensity` never inferred from HK; recovery card has no live refresh after a check-in.
+
+**After P2-D: Phase 3 — Monetization (StoreKit 2). GATED. Do NOT start without Mickey's explicit go-ahead.**
 
 ---
 
