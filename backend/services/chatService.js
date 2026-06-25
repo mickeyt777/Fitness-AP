@@ -23,6 +23,11 @@ function postMessage(userId, body) {
   const id  = uuidv4();
   const now = new Date().toISOString();
 
+  // Defensive: parser_source has a CHECK(IN 'on_device','cloud','none'). Tolerate a
+  // hyphenated "on-device" from older clients and coerce anything unexpected to
+  // 'none' so a bad value can never make the whole INSERT fail the constraint.
+  const normalizedSource = normalizeParserSource(parser_source);
+
   db.prepare(`
     INSERT INTO chat_messages
       (id, user_id, sent_at, role, raw_text, parsed_payload, parser_source, parser_confidence)
@@ -30,7 +35,7 @@ function postMessage(userId, body) {
   `).run(
     id, userId, now, role, raw_text,
     parsed_payload ? JSON.stringify(parsed_payload) : null,
-    parser_source,
+    normalizedSource,
     parser_confidence ?? null
   );
 
@@ -49,6 +54,14 @@ function postMessage(userId, body) {
   const saved = db.prepare('SELECT * FROM chat_messages WHERE id = ?').get(id);
 
   return { message: saved, action: actionResult };
+}
+
+// Coerce a parser_source to the chat_messages CHECK domain. Maps the hyphenated
+// "on-device" (older iOS clients) to "on_device"; anything unrecognised → "none".
+const PARSER_SOURCES = new Set(['on_device', 'cloud', 'none']);
+function normalizeParserSource(value) {
+  if (value === 'on-device') return 'on_device';
+  return PARSER_SOURCES.has(value) ? value : 'none';
 }
 
 // GET /:userId

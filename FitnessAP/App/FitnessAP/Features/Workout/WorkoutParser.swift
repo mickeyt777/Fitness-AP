@@ -199,7 +199,10 @@ enum WorkoutParser {
             confidence: r.confidence
         )
 
-        return AiParseResponse(parsed: parsed, source: "on-device")
+        // "on_device" (underscore) to match the chat_messages.parser_source CHECK
+        // (migration 007: IN 'on_device','cloud','none'). A hyphen here makes the
+        // server INSERT fail the CHECK and the log silently 500s.
+        return AiParseResponse(parsed: parsed, source: "on_device")
     }
 }
 
