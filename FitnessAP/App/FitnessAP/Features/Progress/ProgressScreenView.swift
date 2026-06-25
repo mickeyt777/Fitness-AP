@@ -753,38 +753,49 @@ private struct ActivityMetricRow: View {
             .frame(width: 120, alignment: .leading)
 
             if points.count >= 2 {
-                Chart(points, id: \.date) { point in
-                    switch style {
-                    case .bar:
-                        BarMark(
-                            x: .value("Date", point.date),
-                            y: .value(title, point.value)
-                        )
-                        .foregroundStyle(color.opacity(0.85))
-                    case .line:
-                        LineMark(
-                            x: .value("Date", point.date),
-                            y: .value(title, point.value)
-                        )
-                        .foregroundStyle(color)
-                        .interpolationMethod(.catmullRom)
-                        AreaMark(
-                            x: .value("Date", point.date),
-                            y: .value(title, point.value)
-                        )
-                        .foregroundStyle(color.opacity(0.12))
-                        .interpolationMethod(.catmullRom)
-                    }
-                }
-                .chartXAxis(.hidden)
-                .chartYAxis(.hidden)
-                .frame(height: 48)
+                chart
+                    .chartXAxis(.hidden)
+                    .chartYAxis(.hidden)
+                    .frame(height: 48)
             } else {
                 Text("Not enough data yet")
                     .font(.caption2)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                     .frame(height: 48)
+            }
+        }
+    }
+
+    // The bar/line choice is made HERE, at the View level (@ViewBuilder fully
+    // supports `switch`), not inside the Chart content closure. A `switch` inside
+    // @ChartContentBuilder fails the ChartContent conformance at runtime and traps
+    // with SIGABRT ("subject type 'x' does not conform to protocol 'ChartContent'").
+    @ViewBuilder
+    private var chart: some View {
+        switch style {
+        case .bar:
+            Chart(points, id: \.date) { point in
+                BarMark(
+                    x: .value("Date", point.date),
+                    y: .value(title, point.value)
+                )
+                .foregroundStyle(color.opacity(0.85))
+            }
+        case .line:
+            Chart(points, id: \.date) { point in
+                LineMark(
+                    x: .value("Date", point.date),
+                    y: .value(title, point.value)
+                )
+                .foregroundStyle(color)
+                .interpolationMethod(.catmullRom)
+                AreaMark(
+                    x: .value("Date", point.date),
+                    y: .value(title, point.value)
+                )
+                .foregroundStyle(color.opacity(0.12))
+                .interpolationMethod(.catmullRom)
             }
         }
     }
