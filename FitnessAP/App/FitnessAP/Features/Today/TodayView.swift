@@ -11,6 +11,7 @@ struct TodayView: View {
     @State private var isLoading = false
     @State private var errorMessage: String?
     @State private var activityRefreshToken = 0
+    @State private var recoveryRefreshToken = 0
 
     var body: some View {
         NavigationStack {
@@ -49,11 +50,13 @@ struct TodayView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
 
-                CheckInCard(userId: appState.userId)
-                    .padding(.horizontal)
-                    .padding(.top, 4)
+                CheckInCard(userId: appState.userId) {
+                    recoveryRefreshToken &+= 1
+                }
+                .padding(.horizontal)
+                .padding(.top, 4)
 
-                RecoveryCard(userId: appState.userId)
+                RecoveryCard(userId: appState.userId, refreshToken: recoveryRefreshToken)
                     .padding(.horizontal)
 
                 MacroCard(userId: appState.userId)

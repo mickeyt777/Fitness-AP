@@ -8,6 +8,10 @@ import SwiftUI
 struct CheckInCard: View {
     let userId: String
 
+    /// Called after a check-in saves successfully, so siblings (e.g. RecoveryCard)
+    /// can refresh — recovery is derived from the very check-in just submitted.
+    var onSaved: (() -> Void)? = nil
+
     // Slider values — all start at midpoint until today's data loads
     @State private var energy: Double       = 5
     @State private var nausea: Double       = 1
@@ -156,6 +160,7 @@ struct CheckInCard: View {
             } else {
                 deloadNote = nil
             }
+            onSaved?()   // let RecoveryCard re-fetch with the new check-in factored in
             // Hide the "Saved" label after 2 seconds
             try? await Task.sleep(nanoseconds: 2_000_000_000)
             saved = false

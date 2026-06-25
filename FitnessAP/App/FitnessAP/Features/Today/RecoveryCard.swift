@@ -11,6 +11,9 @@ import SwiftUI
 struct RecoveryCard: View {
     let userId: String
 
+    /// Bumped by TodayView after a check-in saves; a change re-fetches the read.
+    var refreshToken: Int = 0
+
     @State private var read: RecoveryRead? = nil
     @State private var isLoading = true
 
@@ -24,6 +27,7 @@ struct RecoveryCard: View {
             // nil & not loading → fetch failed; show nothing (matches MacroCard).
         }
         .task { await load() }
+        .onChange(of: refreshToken) { _, _ in Task { await load() } }
     }
 
     // MARK: - Content
