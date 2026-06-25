@@ -301,4 +301,26 @@ final class APIClient {
         let req = try buildRequest(method: "GET", path: "/recovery/\(userId)", asUserId: userId)
         return try await perform(req)
     }
+
+    // MARK: - Weekly report (reports + AI narrative)
+
+    /// This week's aggregated summary (workouts, strength, lean-mass proxy, check-ins,
+    /// activity, body weight, titration context). Pass `weekEnd` ("YYYY-MM-DD") to look
+    /// at a prior week; nil means the week ending today.
+    func getWeeklySummary(userId: String, weekEnd: String? = nil) async throws -> WeeklySummary {
+        var path = "/reports/\(userId)/weekly"
+        if let weekEnd { path += "?week_end=\(weekEnd)" }
+        let req = try buildRequest(method: "GET", path: path, asUserId: userId)
+        return try await perform(req)
+    }
+
+    /// Generates the LLM-written weekly narrative from a summary the app already holds.
+    /// The summary is sent verbatim as `summary_data`; the backend builds the prompt.
+    func getWeeklyReportNarrative(userId: String,
+                                  summary: WeeklySummary) async throws -> WeeklyNarrativeResponse {
+        struct Body: Encodable { let summary_data: WeeklySummary }
+        let req = try buildRequest(method: "POST", path: "/ai/weekly-report",
+                                   body: Body(summary_data: summary), asUserId: userId)
+        return try await perform(req)
+    }
 }
