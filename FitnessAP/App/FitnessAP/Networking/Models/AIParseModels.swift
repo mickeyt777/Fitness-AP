@@ -16,9 +16,21 @@ struct ParsedWorkoutSet: Codable {
     var canonical_name: String? = nil
 }
 
+// A parsed cardio / conditioning bout. Present only when `type == "cardio_log"`.
+// Mirrors the backend `cardio_log` payload's `cardio` object and the fields
+// activityService.logCardioSession accepts. `intensity` is "easy" | "moderate"
+// | "hard" | nil; `distance_m` is metres.
+struct ParsedCardio: Codable {
+    var modality: String
+    var duration_min: Double?
+    var intensity: String?
+    var distance_m: Double?
+}
+
 struct ParsedWorkout: Codable {
-    let type: String            // "workout_log" | "nutrition_log" | "side_effect" | "unknown"
+    let type: String            // "workout_log" | "cardio_log" | "nutrition_log" | "side_effect" | "unknown"
     let sets: [ParsedWorkoutSet]?
+    let cardio: ParsedCardio?   // present only for "cardio_log"
     let confidence: Double?
 }
 

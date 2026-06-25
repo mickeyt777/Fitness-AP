@@ -31,12 +31,30 @@ struct OnDeviceWorkoutSet {
 }
 
 @Generable
+struct OnDeviceCardio {
+    @Guide(description: "The cardio activity as spoken, e.g. 'stationary bike', 'outdoor run', 'rowing'.")
+    var modality: String
+
+    @Guide(description: "Duration of the bout in minutes. Omit if not stated.")
+    var duration_min: Double?
+
+    @Guide(description: "Intensity: exactly one of 'easy', 'moderate', or 'hard' (lowercase). Omit if not stated.")
+    var intensity: String?
+
+    @Guide(description: "Distance in metres. Convert km/miles (1 km = 1000 m, 1 mile = 1609.34 m). Omit if not stated.")
+    var distance_m: Double?
+}
+
+@Generable
 struct OnDeviceWorkoutResult {
-    @Guide(description: "'workout_log' when the user describes exercise sets; 'unknown' otherwise.")
+    @Guide(description: "'workout_log' for resistance sets (reps/weight); 'cardio_log' for a continuous endurance bout (run/bike/row/walk/swim described by duration or distance); 'unknown' otherwise.")
     var type: String
 
-    @Guide(description: "One entry per set described. If the user says '3 sets', emit 3 entries.")
+    @Guide(description: "One entry per resistance set described. If the user says '3 sets', emit 3 entries. Empty for cardio_log or unknown.")
     var sets: [OnDeviceWorkoutSet]
+
+    @Guide(description: "The cardio bout when type is 'cardio_log'. Omit otherwise.")
+    var cardio: OnDeviceCardio?
 
     @Guide(description: "Confidence 0.0–1.0 that the structured data is correct.")
     var confidence: Double
@@ -53,12 +71,19 @@ enum WorkoutParser {
     static func parse(userId: String, rawText: String) async throws -> AiParseResponse {
         if let result = try? await parseOnDevice(rawText: rawText) {
             let conf = result.parsed.confidence ?? 0
+            let type = result.parsed.type
             let sets = result.parsed.sets ?? []
-            if result.parsed.type == "workout_log", !sets.isEmpty, conf >= confidenceThreshold {
-                print("[WorkoutParser] on-device ✓ confidence=\(conf)")
+            // A usable workout needs at least one set; a usable cardio bout needs a
+            // modality and a duration. Anything else falls through to the cloud.
+            let okWorkout = type == "workout_log" && !sets.isEmpty
+            let okCardio  = type == "cardio_log"
+                && !(result.parsed.cardio?.modality.isEmpty ?? true)
+                && result.parsed.cardio?.duration_min != nil
+            if (okWorkout || okCardio), conf >= confidenceThreshold {
+                print("[WorkoutParser] on-device ✓ type=\(type) confidence=\(conf)")
                 return result
             }
-            print("[WorkoutParser] on-device low-confidence (\(conf)) or no sets — falling back to cloud")
+            print("[WorkoutParser] on-device low-confidence (\(conf)) or unusable — falling back to cloud")
         } else {
             print("[WorkoutParser] on-device unavailable — using cloud")
         }
@@ -108,6 +133,7 @@ enum WorkoutParser {
         let parsed = ParsedWorkout(
             type: response.parsed.type,
             sets: resolvedSets,
+            cardio: response.parsed.cardio,
             confidence: response.parsed.confidence
         )
         return AiParseResponse(parsed: parsed, source: response.source)
@@ -125,9 +151,15 @@ enum WorkoutParser {
         let session = LanguageModelSession(model: model)
 
         let prompt = """
-        Parse this fitness log. Extract each set of exercises mentioned.
-        If the user says "3 sets", produce 3 set entries.
-        Convert any weight in lbs to kg. Log: \(rawText)
+        Parse this fitness log.
+        - If it describes resistance sets (reps/weight), set type "workout_log" and
+          extract each set. If the user says "3 sets", produce 3 set entries.
+          Convert any weight in lbs to kg.
+        - If it describes a continuous cardio bout (running, walking, cycling,
+          rowing, swimming, etc., characterised by a duration or distance), set
+          type "cardio_log" and fill `cardio` (modality, duration in minutes,
+          intensity as easy/moderate/hard, distance in metres).
+        Log: \(rawText)
         """
 
         let response = try await session.respond(
@@ -146,9 +178,24 @@ enum WorkoutParser {
             )
         }
 
+        // Normalise intensity to the backend's allowed lowercase set
+        // ('easy'/'moderate'/'hard'); anything else becomes nil so the
+        // cardio_sessions CHECK constraint never rejects an on-device parse.
+        let cardio: ParsedCardio? = r.cardio.map { c in
+            let norm = c.intensity?.lowercased()
+            let intensity = ["easy", "moderate", "hard"].contains(norm) ? norm : nil
+            return ParsedCardio(
+                modality: c.modality,
+                duration_min: c.duration_min,
+                intensity: intensity,
+                distance_m: c.distance_m
+            )
+        }
+
         let parsed = ParsedWorkout(
             type: r.type,
             sets: sets.isEmpty ? nil : sets,
+            cardio: cardio,
             confidence: r.confidence
         )
 
