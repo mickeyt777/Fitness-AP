@@ -111,6 +111,32 @@ struct ProgressScreenView: View {
         ScrollView {
             VStack(spacing: 20) {
 
+                // Weekly report entry point — week-scoped digest, independent of the
+                // trend time-range below. Pushes onto this view's NavigationStack.
+                NavigationLink {
+                    WeeklyReportView()
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "doc.text.image")
+                            .font(.title3)
+                            .foregroundColor(.accentColor)
+                            .frame(width: 28)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Weekly Report").font(.headline).foregroundColor(.primary)
+                            Text("Your week at a glance + a coach's note")
+                                .font(.caption).foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right").font(.caption).foregroundColor(.secondary)
+                    }
+                    .padding(16)
+                    .background(Color(.secondarySystemBackground))
+                    .cornerRadius(12)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal)
+                .padding(.top, 4)
+
                 // Time range picker
                 Picker("Time Range", selection: $timeRange) {
                     ForEach(TimeRange.allCases, id: \.self) { range in
