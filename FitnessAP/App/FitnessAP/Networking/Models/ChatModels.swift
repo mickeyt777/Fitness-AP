@@ -24,6 +24,11 @@ struct ChatAction: Decodable {
     let workout_id: String?
     let sets_logged: Int?
     let note: String?
+    // cardio_log action fields (from chatService.handleCardioLog)
+    let cardio_session_id: String?
+    let modality: String?
+    let duration_min: Double?
+    let intensity: String?
 }
 
 // MARK: - Send chat body

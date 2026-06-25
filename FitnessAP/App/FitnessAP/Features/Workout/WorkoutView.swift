@@ -61,13 +61,22 @@ struct WorkoutView: View {
                             .id("typing")
                     }
                     if let parse = pendingParse,
-                       let sets  = parse.parsed.sets, !sets.isEmpty {
+                       parse.parsed.type == "workout_log",
+                       let sets = parse.parsed.sets, !sets.isEmpty {
                         ConfirmCard(sets: sets) {
                             Task { await confirmLog(parse: parse) }
                         } onDiscard: {
-                            pendingParse = nil
-                            pendingRaw   = ""
-                            appendAssistant("No problem — what would you like to log?")
+                            discardPending()
+                        }
+                        .id("confirm")
+                    }
+                    if let parse = pendingParse,
+                       parse.parsed.type == "cardio_log",
+                       let cardio = parse.parsed.cardio {
+                        CardioConfirmCard(cardio: cardio) {
+                            Task { await confirmLog(parse: parse) }
+                        } onDiscard: {
+                            discardPending()
                         }
                         .id("confirm")
                     }
@@ -91,7 +100,7 @@ struct WorkoutView: View {
             Text("Log your workout by speaking or typing")
                 .font(.headline)
                 .multilineTextAlignment(.center)
-            Text("Try: \"3 sets of goblet squats, 16kg, RPE 7\"")
+            Text("Try: \"3 sets of goblet squats, 16kg, RPE 7\"\nor \"30 min stationary bike, moderate\"")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
@@ -170,9 +179,15 @@ struct WorkoutView: View {
                 let resolved = await WorkoutParser.resolve(userId: appState.userId, response: result)
                 isParsing    = false
                 pendingParse = resolved
+            } else if result.parsed.type == "cardio_log",
+                      result.parsed.cardio != nil {
+                // Cardio needs no alias resolution here — the backend resolves the
+                // modality to a conditioning movement when it logs the session.
+                isParsing    = false
+                pendingParse = result
             } else {
                 isParsing = false
-                appendAssistant("I couldn't find any sets in that. Try: \"3 sets goblet squat 16kg RPE 7\"")
+                appendAssistant("I couldn't find a workout in that. Try: \"3 sets goblet squat 16kg RPE 7\" or \"30 min stationary bike, moderate\"")
             }
         } catch {
             isParsing = false
@@ -192,12 +207,33 @@ struct WorkoutView: View {
         do {
             let response = try await APIClient.shared.sendChat(userId: appState.userId, body: body)
             isParsing = false
-            let n = response.action?.sets_logged ?? 0
-            appendAssistant("✅ Logged \(n) set\(n == 1 ? "" : "s"). Keep it up!")
+            if parse.parsed.type == "cardio_log" {
+                appendAssistant("✅ \(cardioConfirmation(response.action, fallback: parse.parsed.cardio)) Keep it up!")
+            } else {
+                let n = response.action?.sets_logged ?? 0
+                appendAssistant("✅ Logged \(n) set\(n == 1 ? "" : "s"). Keep it up!")
+            }
         } catch {
             isParsing = false
-            appendAssistant("Sets parsed but failed to save — try again.")
+            appendAssistant("Parsed but failed to save — try again.")
         }
+    }
+
+    /// Human-readable confirmation for a logged cardio bout, preferring the
+    /// server's echoed action and falling back to the parsed payload.
+    private func cardioConfirmation(_ action: ChatAction?, fallback: ParsedCardio?) -> String {
+        let modality = action?.modality ?? fallback?.modality ?? "cardio"
+        let mins = action?.duration_min ?? fallback?.duration_min
+        if let mins {
+            return "Logged \(Int(mins.rounded())) min of \(modality)."
+        }
+        return "Logged \(modality)."
+    }
+
+    private func discardPending() {
+        pendingParse = nil
+        pendingRaw   = ""
+        appendAssistant("No problem — what would you like to log?")
     }
 
     // MARK: - Speech recognition
@@ -361,6 +397,49 @@ struct ConfirmCard: View {
         if let r = set.reps      { p.append("\(r) reps") }
         if let w = set.weight_kg { p.append("\(w) kg") }
         if let e = set.rpe       { p.append("RPE \(e)") }
+        return p.joined(separator: " · ")
+    }
+}
+
+// MARK: - CardioConfirmCard
+
+struct CardioConfirmCard: View {
+    let cardio: ParsedCardio
+    let onConfirm: () -> Void
+    let onDiscard: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Image(systemName: "heart.fill").foregroundColor(.pink)
+                Text("Got it — confirm this cardio?").font(.subheadline).bold()
+            }
+            HStack {
+                Text(cardio.modality.capitalized).font(.subheadline)
+                Spacer()
+                Text(detail).font(.subheadline).foregroundColor(.secondary)
+            }
+            HStack(spacing: 12) {
+                Button("Discard", action: onDiscard)
+                    .buttonStyle(.bordered).foregroundColor(.red)
+                Button("Log it", action: onConfirm)
+                    .buttonStyle(.borderedProminent).frame(maxWidth: .infinity)
+            }
+            .padding(.top, 4)
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(16)
+    }
+
+    private var detail: String {
+        var p: [String] = []
+        if let d = cardio.duration_min { p.append("\(Int(d.rounded())) min") }
+        if let m = cardio.distance_m, m > 0 {
+            let km = m / 1000
+            p.append(km >= 1 ? String(format: "%.2f km", km) : "\(Int(m.rounded())) m")
+        }
+        if let i = cardio.intensity { p.append(i.capitalized) }
         return p.joined(separator: " · ")
     }
 }
