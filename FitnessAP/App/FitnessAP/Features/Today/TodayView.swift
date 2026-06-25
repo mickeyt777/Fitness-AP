@@ -10,6 +10,7 @@ struct TodayView: View {
     @State private var sessions: WorkoutPlan = []
     @State private var isLoading = false
     @State private var errorMessage: String?
+    @State private var activityRefreshToken = 0
 
     var body: some View {
         NavigationStack {
@@ -58,7 +59,7 @@ struct TodayView: View {
                 MacroCard(userId: appState.userId)
                     .padding(.horizontal)
 
-                ActivityCard(userId: appState.userId)
+                ActivityCard(userId: appState.userId, refreshToken: activityRefreshToken)
                     .padding(.horizontal)
 
                 Text("This Week's Plan")
@@ -73,6 +74,11 @@ struct TodayView: View {
             .padding(.vertical, 4)
         }
         .contentMargins(.bottom, 110, for: .scrollContent)
+        .refreshable {
+            // Reload the plan and force the activity card past its sync throttle.
+            activityRefreshToken &+= 1
+            await loadPlan()
+        }
     }
 
     // MARK: - Data loading

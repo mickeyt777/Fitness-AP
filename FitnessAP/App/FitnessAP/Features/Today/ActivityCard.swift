@@ -10,9 +10,17 @@ import SwiftUI
 
 struct ActivityCard: View {
     let userId: String
+    // Bumped by TodayView's pull-to-refresh to force a fresh HealthKit sync,
+    // bypassing the throttle. Defaults to 0 so other call sites/previews compile.
+    var refreshToken: Int = 0
 
     @State private var summary: ActivitySummary? = nil
     @State private var isLoading = true
+
+    /// Don't re-pull ~30 days of HealthKit workouts on every Today appearance.
+    /// Throttle auto-syncs to once per interval; pull-to-refresh forces one.
+    private static let syncInterval: TimeInterval = 15 * 60
+    private static var lastSyncByUser: [String: Date] = [:]
 
     var body: some View {
         Group {
@@ -23,7 +31,10 @@ struct ActivityCard: View {
             }
             // nil & not loading → fetch failed; show nothing (matches MacroCard).
         }
-        .task { await load() }
+        .task { await load(force: false) }
+        .onChange(of: refreshToken) { _, _ in
+            Task { await load(force: true) }
+        }
     }
 
     // MARK: - Content
@@ -114,16 +125,28 @@ struct ActivityCard: View {
 
     // MARK: - Fetch
 
-    private func load() async {
-        isLoading = true
+    private func load(force: Bool) async {
+        // Only show the skeleton on the first load; a throttled/forced refresh
+        // shouldn't flash it over already-visible data.
+        if summary == nil { isLoading = true }
+
         // If the user connected Health this session, sync first so the ring is fresh.
         // Best-effort — a sync failure must not block showing whatever the API has.
+        // Throttled: skip the (~30-day) re-pull unless forced or the interval elapsed.
         if HealthKitManager.shared.isHealthDataAvailable,
-           HealthKitManager.shared.authorizationRequested {
+           HealthKitManager.shared.authorizationRequested,
+           shouldSync(force: force) {
             try? await HealthKitManager.shared.performInitialSync(userId: userId)
+            Self.lastSyncByUser[userId] = Date()
         }
         summary = try? await APIClient.shared.getActivitySummary(userId: userId)
         isLoading = false
+    }
+
+    private func shouldSync(force: Bool) -> Bool {
+        if force { return true }
+        guard let last = Self.lastSyncByUser[userId] else { return true }
+        return Date().timeIntervalSince(last) >= Self.syncInterval
     }
 }
 
