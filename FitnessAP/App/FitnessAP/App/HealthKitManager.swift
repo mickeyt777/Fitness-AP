@@ -177,8 +177,22 @@ final class HealthKitManager: ObservableObject {
             distance_m: w.totalDistance?.doubleValue(for: .meter()),
             active_energy_kcal: w.totalEnergyBurned?.doubleValue(for: .kilocalorie()),
             avg_hr: avgHR.map { Int($0.rounded()) },
-            intensity: nil                          // not inferred from HealthKit
+            intensity: inferIntensity(avgHR: avgHR)
         )
+    }
+
+    /// Rough easy/moderate/hard from average heart rate. We don't have the user's
+    /// age/max-HR in this static mapper, so this uses absolute-BPM bands rather than
+    /// %HRmax zones — deliberately coarse and only a hint (the user can override).
+    /// Returns nil when there's no HR sample, so the cardio_sessions CHECK
+    /// (intensity IN 'easy'|'moderate'|'hard', or NULL) is never violated.
+    private static func inferIntensity(avgHR: Double?) -> String? {
+        guard let hr = avgHR, hr > 0 else { return nil }
+        switch hr {
+        case ..<120:    return "easy"
+        case 120..<150: return "moderate"
+        default:        return "hard"
+        }
     }
 
     /// Human-readable modality string the backend can alias-resolve to a conditioning
