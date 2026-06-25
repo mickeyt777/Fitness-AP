@@ -3,6 +3,7 @@
 const { v4: uuidv4 } = require('uuid');
 const { getDb } = require('../db/database');
 const { httpError } = require('../lib/httpError');
+const activityService = require('./activityService');
 
 // POST /
 // Stores the incoming message and, if a parsed payload is attached, acts on it.
@@ -37,6 +38,8 @@ function postMessage(userId, body) {
   let actionResult = null;
   if (parsed_payload?.type === 'workout_log') {
     actionResult = handleWorkoutLog(db, userId, parsed_payload, now);
+  } else if (parsed_payload?.type === 'cardio_log') {
+    actionResult = handleCardioLog(userId, parsed_payload);
   } else if (parsed_payload?.type === 'nutrition_log') {
     actionResult = { type: 'nutrition_log', note: 'Nutrition logged (macro tracking coming in Phase 2).' };
   } else if (parsed_payload?.type === 'side_effect') {
@@ -120,6 +123,31 @@ function handleWorkoutLog(db, userId, payload, now) {
   }
 
   return { type: 'workout_log', workout_id: workout.id, sets_logged: payload.sets?.length ?? 0 };
+}
+
+/**
+ * handleCardioLog(userId, payload)
+ * Routes a parsed spoken/typed cardio bout into cardio_sessions via
+ * activityService (which owns the SQL, modality→movement resolution, and the
+ * HealthKit-wins dedup). `payload.cardio` carries { modality, duration_min,
+ * intensity, distance_m }. Returns an action summary for the chat UI.
+ */
+function handleCardioLog(userId, payload) {
+  const cardio = payload.cardio ?? {};
+  const session = activityService.logCardioSession(userId, {
+    modality:     cardio.modality ?? null,
+    duration_min: cardio.duration_min ?? null,
+    distance_m:   cardio.distance_m ?? null,
+    intensity:    cardio.intensity ?? null,
+  });
+
+  return {
+    type:              'cardio_log',
+    cardio_session_id: session.id,
+    modality:          session.modality,
+    duration_min:      session.duration_min,
+    intensity:         session.intensity,
+  };
 }
 
 module.exports = { postMessage, listChat };
