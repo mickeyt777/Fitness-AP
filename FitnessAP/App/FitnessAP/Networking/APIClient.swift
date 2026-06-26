@@ -1,5 +1,5 @@
 // APIClient.swift
-// All communication with the Fitness AP backend lives here.
+// All communication with the Fitness GLP backend lives here.
 // Every other file in the app calls these methods — nothing else touches URLSession.
 //
 // Dev mode: set devUserId and the X-User-Id header is sent instead of an Apple JWT.

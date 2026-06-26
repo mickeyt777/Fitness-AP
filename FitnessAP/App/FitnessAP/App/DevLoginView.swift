@@ -20,7 +20,7 @@ struct DevLoginView: View {
                 .foregroundColor(.blue)
 
             VStack(spacing: 6) {
-                Text("Fitness AP")
+                Text("Fitness GLP")
                     .font(.largeTitle).bold()
 
                 Text("DEV MODE")

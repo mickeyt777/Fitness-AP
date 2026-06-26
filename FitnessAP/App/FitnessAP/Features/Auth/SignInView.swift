@@ -25,7 +25,7 @@ struct SignInView: View {
                     .font(.system(size: 72))
                     .foregroundColor(.blue)
 
-                Text("Fitness AP")
+                Text("Fitness GLP")
                     .font(.largeTitle).bold()
 
                 Text("Your GLP-1 training companion")

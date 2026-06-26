@@ -264,7 +264,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "FitnessAP reads your steps, distance, active energy, and workouts to track your activity and adapt your plan";
+				INFOPLIST_KEY_CFBundleDisplayName = "Fitness GLP";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Fitness GLP reads your steps, distance, active energy, and workouts to track your activity and adapt your plan";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to log your workouts by voice.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Used to transcribe your spoken workout descriptions.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -299,7 +300,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "FitnessAP reads your steps, distance, active energy, and workouts to track your activity and adapt your plan";
+				INFOPLIST_KEY_CFBundleDisplayName = "Fitness GLP";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Fitness GLP reads your steps, distance, active energy, and workouts to track your activity and adapt your plan";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Used to log your workouts by voice.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Used to transcribe your spoken workout descriptions.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
