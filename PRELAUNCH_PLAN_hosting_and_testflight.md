@@ -17,8 +17,11 @@ feedback, and *defer monetization* until that feedback is in.
 - **Rebrand:** **DONE this session** — all iOS user-facing "Fitness AP" strings are now
   "Fitness GLP" (sign-in + dev titles, home-screen display name, HealthKit permission text).
   Backend brand mentions are comment headers only (cosmetic, not shipped to users).
-- **Apple Developer:** enrolled; **bundle ID not yet finalized.** Recommendation:
-  `com.mickey.fitnessglp` (see Track 3.1). Permanent once the App ID is created — confirm before use.
+- **Apple Developer:** **NOT yet enrolled** — being able to log into developer.apple.com with a
+  normal Apple ID ≠ Program membership. Enrollment ($99/yr) is **in progress (started 2026-06-26 PM)**
+  and is the prerequisite long-pole for TestFlight. **Bundle ID confirmed + set in Xcode:
+  `com.mickey.fitnessglp`** (register the App ID under this once enrolled; set `APPLE_BUNDLE_ID` +
+  `APNS_BUNDLE_ID` to match).
 - **Privacy policy host:** serve a static `/privacy` page from the Railway backend (one platform,
   no extra service — see Track 4.3).
 - **Out of scope this round:** monetization (StoreKit/RevenueCat), progress photos / Backblaze
@@ -139,7 +142,9 @@ first internal build, and the piece your partner will pull-request:
 ---
 
 ## Critical path (suggested order)
-1. **Finalize bundle ID** (unblocks env + Apple config). *(Track 3.1)*
+0. **Enroll in the Apple Developer Program** (in progress, 2026-06-26 PM). Approval can take
+   hours-to-days and gates App ID creation, App Store Connect, and TestFlight — the long pole.
+1. ✅ **Bundle ID finalized + set in Xcode:** `com.mickey.fitnessglp`. *(Track 3.1 done)*
 2. **Generate `JWT_SECRET` + `ENCRYPTION_KEY`; back them up.** *(Track 1.4)*
 3. **Stand up Railway**: repo, volume, env vars, deploy, `/health` green. *(Track 1)*
 4. **Build push (Track 2)** — backend APNs sender + iOS registration. Partner PR.
@@ -162,11 +167,12 @@ first internal build, and the piece your partner will pull-request:
 ---
 
 ## Open questions still to resolve
-1. **Confirm the bundle ID** = `com.mickey.fitnessglp`? (Recommended; permanent — say yes and I'll
-   update both Xcode build configs + the `APPLE_BUNDLE_ID` references.)
-2. **Confirm privacy-policy host** = Vercel `web/` `/privacy` page? (Or GitHub Pages fallback.)
+1. **Apple Developer enrollment** — confirm it goes through (started 2026-06-26 PM). Everything
+   Apple-side waits on this.
 
-*Resolved this session:* push is in v1 (partner PR); rebrand to "Fitness GLP" done.
+*Resolved:* bundle ID = `com.mickey.fitnessglp` (set in Xcode); push in v1 (partner PR); rebrand to
+"Fitness GLP" done across iOS + backend; repo renamed to `Fitness-GLP`; privacy policy will be a
+static `/privacy` page on the Railway backend.
 
 ## Explicitly deferred (not blocking the beta)
 - **Monetization** — StoreKit 2 / RevenueCat, trial, paywall, free-paid split, price. Revisit after
