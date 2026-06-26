@@ -1,5 +1,5 @@
 /**
- * Fitness AP — Backend Entry Point
+ * Fitness GLP — Backend Entry Point
  *
  * This is the main file Node.js runs when you start the server.
  * It wires together Express, the database, and all the API routes.
@@ -99,5 +99,5 @@ app.use((err, _req, res, _next) => {
 
 const PORT = env.PORT;
 app.listen(PORT, () => {
-  console.log(`Fitness AP backend listening on port ${PORT}`);
+  console.log(`Fitness GLP backend listening on port ${PORT}`);
 });

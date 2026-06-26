@@ -1,7 +1,7 @@
 {
-  "name": "fitness-ap-backend",
+  "name": "fitness-glp-backend",
   "version": "0.1.0",
-  "description": "Fitness AP backend - GLP-1 training and nutrition API",
+  "description": "Fitness GLP backend - GLP-1 training and nutrition API",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

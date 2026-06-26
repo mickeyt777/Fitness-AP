@@ -1,5 +1,5 @@
 /**
- * Fitness AP — GLP-Aware Workout Generator & Progression Engine
+ * Fitness GLP — GLP-Aware Workout Generator & Progression Engine
  *
  * Two responsibilities:
  *   1. generateWorkoutPlan(profile) — given a user's profile, returns a weekly

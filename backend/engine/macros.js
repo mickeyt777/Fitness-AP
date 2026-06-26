@@ -1,5 +1,5 @@
 /**
- * Fitness AP — Macro Calculator (GLP-1 Edition)
+ * Fitness GLP — Macro Calculator (GLP-1 Edition)
  *
  * Standard macro calculators are wrong for GLP users. They subtract a
  * 500-calorie deficit from TDEE — but the drug is already creating a 700–1,200

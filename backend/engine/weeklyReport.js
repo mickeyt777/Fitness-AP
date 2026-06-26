@@ -1,5 +1,5 @@
 /**
- * Fitness AP — Weekly Report Aggregator
+ * Fitness GLP — Weekly Report Aggregator
  *
  * Pulls together everything that happened in the past 7 days into a single
  * structured summary. This summary is then either:

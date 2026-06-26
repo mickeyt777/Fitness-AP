@@ -1,5 +1,5 @@
 /**
- * Fitness AP — Background Worker
+ * Fitness GLP — Background Worker
  *
  * This file runs as a SEPARATE process from server.js.
  * It handles scheduled jobs that need to fire at specific times:

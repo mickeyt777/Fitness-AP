@@ -1,6 +1,6 @@
-# Fitness AP Backend — Setup Guide
+# Fitness GLP Backend — Setup Guide
 
-This is the Node.js backend for the Fitness AP iOS app. It runs on a small Linux
+This is the Node.js backend for the Fitness GLP iOS app. It runs on a small Linux
 server (VPS) and handles workout generation, macro calculation, and data storage.
 
 You don't need a Mac to work on this. Any computer with Node.js installed can run
@@ -60,7 +60,7 @@ You should see:
 [db] opened ./data/fitnessap.db
 [db] applied migration: 001_users.sql
 ... (one line per migration file)
-Fitness AP backend listening on port 3000
+Fitness GLP backend listening on port 3000
 ```
 
 The server is now running. Test it:
@@ -143,7 +143,7 @@ npm install -g pm2
 
 Option A — Git (recommended):
 ```bash
-git clone https://github.com/YOUR_USERNAME/fitness-ap-backend.git /opt/fitnessap
+git clone https://github.com/YOUR_USERNAME/fitness-glp-backend.git /opt/fitnessap
 cd /opt/fitnessap
 npm install
 ```
